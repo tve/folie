@@ -1,16 +1,17 @@
 package main
 
 import (
-	"os"
 	"bytes"
+	"os"
 
 	"github.com/chzyer/readline"
-	"github.com/pkg/term"
+	"github.com/tarm/serial"
 )
 
 func main() {
-	tty, _ := term.Open("/dev/cu.usbmodemD5D4C5E3",
-		term.Speed(115200), term.CBreakMode)
+	devname := "/dev/cu.usbmodemD5D4C5E3"
+	config := serial.Config{Name: devname, Baud: 115200}
+	tty, _ := serial.OpenPort(&config)
 
 	rl, _ := readline.NewEx(&readline.Config{
 		UniqueEditLine: true,
