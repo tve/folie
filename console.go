@@ -34,7 +34,7 @@ func ConsoleTask() {
 		if err != nil {
 			break
 		}
-		commandOut <- line
+		commandSend <- line
 	}
 }
 

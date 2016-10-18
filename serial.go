@@ -13,19 +13,12 @@ import (
 var (
 	port = flag.String("p", "", "serial port (usually /dev/tty* or COM*)")
 	baud = flag.Int("b", 115200, "serial baud rate")
+
+	tty *serial.Port
 )
 
-// SerialConnect open and re-opens a serial port and feeds the two channels.
+// SerialConnect opens and re-opens a serial port and feeds the receive channel.
 func SerialConnect() {
-	var tty *serial.Port
-
-	go func() {
-		for data := range commandOut {
-			// FIXME need a way to recover from write-while-closed panics
-			tty.Write([]byte(data + "\r"))
-		}
-	}()
-
 	for {
 		var err error
 		config := serial.Config{Name: *port, Baud: *baud}
@@ -44,7 +37,7 @@ func SerialConnect() {
 				break
 			}
 			check(err)
-			serialIn <- data[:n]
+			serialRecv <- data[:n]
 		}
 		fmt.Print("\n[disconnected] ")
 
@@ -52,9 +45,17 @@ func SerialConnect() {
 	}
 }
 
-// SerialDispatch handles incoming serial data and decides what to do with it.
+// SerialDispatch handles all incoming and outgoing serial data.
 func SerialDispatch() {
-	for data := range serialIn {
-		os.Stdout.Write(data)
+	for {
+		select {
+
+		case data := <-serialRecv:
+			os.Stdout.Write(data)
+
+		case cmd := <-commandSend:
+			// FIXME need a way to recover from write-while-closed panics
+			tty.Write([]byte(cmd + "\r"))
+		}
 	}
 }

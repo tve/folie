@@ -8,8 +8,8 @@ import (
 )
 
 var (
-	serialIn   = make(chan []byte, 0)
-	commandOut = make(chan string, 0)
+	serialRecv  = make(chan []byte, 0)
+	commandSend = make(chan string, 0)
 )
 
 func main() {
