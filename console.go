@@ -11,7 +11,8 @@ var (
 	console *readline.Instance
 )
 
-func consoleTask() {
+// ConsoleTask listens to the console with readline for editing & history.
+func ConsoleTask() {
 	if readline.IsTerminal(1) {
 		os.Stdout = insertCRs(os.Stdout)
 	}

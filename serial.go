@@ -15,7 +15,8 @@ var (
 	baud = flag.Int("b", 115200, "serial baud rate")
 )
 
-func serialConnect() {
+// SerialConnect open and re-opens a serial port and feeds the two channels.
+func SerialConnect() {
 	var tty *serial.Port
 
 	go func() {
@@ -51,7 +52,8 @@ func serialConnect() {
 	}
 }
 
-func serialDispatch() {
+// SerialDispatch handles incoming serial data and decides what to do with it.
+func SerialDispatch() {
 	for data := range serialIn {
 		os.Stdout.Write(data)
 	}

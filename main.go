@@ -15,10 +15,10 @@ var (
 func main() {
 	flag.Parse()
 
-	go serialConnect()
-	go serialDispatch()
+	go SerialConnect()
+	go SerialDispatch()
 
-	consoleTask()
+	ConsoleTask()
 }
 
 func check(e error) {
