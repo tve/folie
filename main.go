@@ -20,10 +20,11 @@ var (
 	port = flag.String("p", "", "serial port (usually /dev/tty* or COM*)")
 	baud = flag.Int("b", 115200, "serial baud rate")
 
-	tasks sync.WaitGroup
-	tty   *serial.Port
-	rl    *readline.Instance
-	serIn = make(chan []byte, 0)
+	tasks      sync.WaitGroup
+	tty        *serial.Port
+	console    *readline.Instance
+	serialIn   = make(chan []byte, 0)
+	commandOut = make(chan string, 0)
 )
 
 func main() {
@@ -35,8 +36,14 @@ func main() {
 	go readSerial()
 
 	go func() {
-		for data := range serIn {
+		for data := range serialIn {
 			os.Stdout.Write(data)
+		}
+	}()
+
+	go func() {
+		for data := range commandOut {
+			tty.Write([]byte(data + "\r"))
 		}
 	}()
 
@@ -53,7 +60,8 @@ func readSerial() {
 			continue
 		}
 
-		fmt.Fprint(rl.Stdout(), "[connected]\n")
+		// by using readline's Stdout, we can force re-display of current input
+		fmt.Fprintln(console.Stdout(), "[connected]")
 		for {
 			data := make([]byte, 250)
 			n, err := tty.Read(data)
@@ -61,7 +69,7 @@ func readSerial() {
 				break
 			}
 			check(err)
-			serIn <- data[:n]
+			serialIn <- data[:n]
 		}
 		fmt.Print("\n[disconnected] ")
 
@@ -105,16 +113,16 @@ func consoleTask() {
 		UniqueEditLine: true,
 		Stdout:         os.Stdout,
 	}
-	rl, err = readline.NewEx(&config)
+	console, err = readline.NewEx(&config)
 	check(err)
-	defer rl.Close()
+	defer console.Close()
 
 	for {
-		line, err := rl.Readline()
+		line, err := console.Readline()
 		if err != nil {
 			break
 		}
-		tty.Write([]byte(line + "\r"))
+		commandOut <- line
 	}
 }
 
