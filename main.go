@@ -5,8 +5,11 @@ package main
 import (
 	"bytes"
 	"flag"
+	"fmt"
+	"io"
 	"log"
 	"os"
+	"time"
 	"sync"
 
 	"github.com/chzyer/readline"
@@ -19,21 +22,17 @@ var (
 
 	tasks sync.WaitGroup
 	tty   *serial.Port
+	serIn = make(chan []byte, 0)
 )
 
 func main() {
-	var err error
 	flag.Parse()
 
-	config := serial.Config{Name: *port, Baud: *baud}
-	tty, err = serial.OpenPort(&config)
-	check(err)
+	go readSerial()
 
 	go func() {
-		for {
-			line := make([]byte, 100)
-			n, _ := tty.Read(line)
-			line = bytes.Replace(line[:n], []byte("\n"), []byte("\r\n"), -1)
+		for line := range serIn {
+			line = bytes.Replace(line, []byte("\n"), []byte("\r\n"), -1)
 			os.Stdout.Write(line)
 		}
 	}()
@@ -44,10 +43,37 @@ func main() {
 	tasks.Wait()
 }
 
+func readSerial() {
+	for {
+		var err error
+		config := serial.Config{Name: *port, Baud: *baud}
+		tty, err = serial.OpenPort(&config)
+		if err != nil {
+			time.Sleep(100 * time.Millisecond)
+			continue
+		}
+
+		fmt.Print("[connected]\r\n")
+		for {
+			line := make([]byte, 250)
+			n, err := tty.Read(line)
+			if err == io.EOF {
+				break
+			}
+			check(err)
+			serIn <- line[:n]
+		}
+		fmt.Print("\r\n[disconnected] ")
+
+		tty.Close()
+	}
+}
+
 func consoleTask() {
 	defer tasks.Done()
 
-	rl, err := readline.NewEx(&readline.Config{ UniqueEditLine: true })
+	config := readline.Config{UniqueEditLine: true}
+	rl, err := readline.NewEx(&config)
 	check(err)
 	defer rl.Close()
 
