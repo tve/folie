@@ -2,10 +2,6 @@
 test:
 	go test
 
-# build folie for local use
-app:
-	go build
-
 # build folie for several platforms and compress for release
 builds:
 	@ rm -rf $@; mkdir $@
@@ -28,6 +24,4 @@ builds:
 clean:
 	rm -rf folie folie.exe builds
 
-.PHONY: test app builds clean
-
-# vim: set noexpandtab :
+.PHONY: test builds clean
