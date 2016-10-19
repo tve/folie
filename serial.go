@@ -36,9 +36,9 @@ func SerialConnect() {
 
 		// use readline's Stdout to force re-display of current input
 		fmt.Fprintln(console.Stdout(), "[connected]")
-		var data [250]byte
 		for {
-			n, err := tty.Read(data[:])
+			data := make([]byte, 250)
+			n, err := tty.Read(data)
 			if err == io.EOF {
 				break
 			}
