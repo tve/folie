@@ -71,18 +71,24 @@ func SpecialCommand(line string) bool {
 		switch cmd[0] {
 
 		case "upload":
-			tty.SetMode(&serial.Mode{
-				BaudRate: *baud,
-				Parity: serial.EvenParity,
-			})
-			Uploader(MustAsset("data/mecrisp.bin"), tty)
-			tty.SetMode(&serial.Mode{
-				BaudRate: *baud,
-			})
+			WrappedUpload(cmd[1:])
 
 		default:
 			return true
 		}
 	}
 	return false
+}
+
+func WrappedUpload(argv []string) {
+	// switch to even parity during upload only
+	tty.SetMode(&serial.Mode{
+		BaudRate: *baud,
+		Parity:   serial.EvenParity,
+	})
+	defer tty.SetMode(&serial.Mode{
+		BaudRate: *baud,
+	})
+
+	Uploader(MustAsset("data/mecrisp.bin"), tty)
 }
