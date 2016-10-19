@@ -26,7 +26,7 @@ var (
 
 func Uploader(data []byte) {
 	defer fmt.Println()
-	fmt.Printf("  Uploading %d bytes: ", len(data))
+	fmt.Printf("%d bytes: ", len(data))
 	connectToTarget()
 	fmt.Printf(" v%02x ", getBootVersion())
 	fmt.Printf("#%04x ", getChipType())

@@ -40,9 +40,6 @@ func SerialConnect() {
 
 		// use readline's Stdout to force re-display of current input
 		fmt.Fprintln(console.Stdout(), "[connected]")
-		if *even {
-			commandSend <- "upload"
-		}
 		var data [250]byte
 		for {
 			n, err := tty.Read(data[:])
@@ -90,7 +87,8 @@ func SpecialCommand(line string) bool {
 		switch cmd[0] {
 
 		case "upload":
-			WrappedUpload(cmd[1:])
+			fmt.Print(line, " ")
+			WrappedUpload(cmd)
 
 		default:
 			return false
@@ -104,7 +102,17 @@ func WrappedUpload(argv []string) {
 	//tty.SetMode(&serial.Mode{BaudRate: *baud, Parity: serial.EvenParity})
 	//defer tty.SetMode(&serial.Mode{BaudRate: *baud, Parity: serial.NoParity})
 
-	Uploader(MustAsset("data/mecrisp.bin"))
+	name := "blink"
+	if len(argv) > 1 {
+		name = argv[1]
+	}
+	data, err := Asset("data/" + name + ".bin")
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	Uploader(data)
 
 	// FIXME, see "even" flag
 	console.Close()
