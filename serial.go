@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	port = flag.String("p", "", "serial port (usually /dev/tty* or COM*)")
+	port = flag.String("p", "", "serial port (COM*, /dev/cu.*, or /dev/tty*)")
 	baud = flag.Int("b", 115200, "serial baud rate")
 
 	tty *serial.Port
