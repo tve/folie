@@ -26,12 +26,28 @@ var (
 
 func Uploader(data []byte) {
 	defer fmt.Println()
-	fmt.Printf("%d bytes: ", len(data))
+	fmt.Printf("\n  %db ", len(data))
+
 	connectToTarget()
+
 	fmt.Printf(" v%02x ", getBootVersion())
 	fmt.Printf("#%04x ", getChipType())
+
+	sendCmd(RDUNP_CMD)
+	wantAck(20)
+	fmt.Print("R ")
+
+	connectToTarget()
+
+	sendCmd(WRUNP_CMD)
+	wantAck(0)
+	fmt.Print("W ")
+
+	connectToTarget()
+
 	massErase()
-	fmt.Print("* ")
+	fmt.Print("E ")
+
 	writeFlash(data)
 	fmt.Print("done.")
 }
@@ -140,7 +156,7 @@ func getChipType() uint16 {
 func massErase() {
 	sendCmd(ERASE_CMD)
 	sendByte(0xFF)
-	sendByte(checkSum)
+	sendByte(0x00)
 	wantAck(4)
 }
 

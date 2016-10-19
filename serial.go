@@ -15,7 +15,7 @@ var (
 	port = flag.String("p", "", "serial port (COM*, /dev/cu.*, or /dev/tty*)")
 	baud = flag.Int("b", 115200, "serial baud rate")
 	// FIXME: added as hack for now, until we can turn parity on and off
-	even = flag.Bool("u", false, "serial even parity (for uploads only)")
+	upload = flag.String("u", "", "upload a file and quit")
 
 	tty *serial.Port
 )
@@ -28,8 +28,8 @@ func SerialConnect() {
 
 	for {
 		var err error
-		config := &serial.Config{ Name: *port, Baud: *baud }
-		if *even {
+		config := &serial.Config{Name: *port, Baud: *baud}
+		if *upload != "" {
 			config.Parity = serial.ParityEven
 		}
 		tty, err = serial.OpenPort(config)
@@ -40,6 +40,9 @@ func SerialConnect() {
 
 		// use readline's Stdout to force re-display of current input
 		fmt.Fprintln(console.Stdout(), "[connected]")
+		if *upload != "" {
+			commandSend <- "upload " + *upload
+		}
 		var data [250]byte
 		for {
 			n, err := tty.Read(data[:])
@@ -113,8 +116,9 @@ func WrappedUpload(argv []string) {
 	}
 
 	Uploader(data)
-
-	// FIXME, see "even" flag
+	// FIXME, see the "-u" flag
+	fmt.Print("Press return... ")
 	console.Close()
+	fmt.Println("Press return... ")
 	os.Exit(0)
 }
