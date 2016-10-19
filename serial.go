@@ -55,10 +55,13 @@ func SerialDispatch() {
 		case data := <-serialRecv:
 			os.Stdout.Write(data)
 
-		case cmd := <-commandSend:
+		case data := <-serialSend:
 			// FIXME need a way to recover from write-while-closed panics
-			if !SpecialCommand(cmd) {
-				tty.Write([]byte(cmd + "\r"))
+			tty.Write(data)
+
+		case line := <-commandSend:
+			if !SpecialCommand(line) {
+				serialSend <- []byte(line + "\r")
 			}
 		}
 	}
@@ -74,14 +77,14 @@ func SpecialCommand(line string) bool {
 			WrappedUpload(cmd[1:])
 
 		default:
-			return true
+			return false
 		}
 	}
-	return false
+	return true
 }
 
 func WrappedUpload(argv []string) {
-	// switch to even parity during upload only
+	// temporarily switch to even parity during upload
 	tty.SetMode(&serial.Mode{
 		BaudRate: *baud,
 		Parity:   serial.EvenParity,
@@ -90,5 +93,5 @@ func WrappedUpload(argv []string) {
 		BaudRate: *baud,
 	})
 
-	Uploader(MustAsset("data/mecrisp.bin"), tty)
+	Uploader(MustAsset("data/mecrisp.bin"))
 }

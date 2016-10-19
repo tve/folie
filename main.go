@@ -9,6 +9,7 @@ import (
 
 var (
 	serialRecv  = make(chan []byte, 0)
+	serialSend  = make(chan []byte, 1)
 	commandSend = make(chan string, 0)
 )
 
