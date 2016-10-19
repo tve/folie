@@ -28,10 +28,12 @@ func Uploader(data []byte) {
 	defer fmt.Println()
 	fmt.Printf("  Uploading %d bytes: ", len(data))
 	connectToTarget()
-	fmt.Println("\nyeay!")
-	connectToTarget()
-	fmt.Println("\nyeay again!")
-	fmt.Printf("boot:%02x ", getBootVersion())
+	fmt.Printf(" v%02x ", getBootVersion())
+	fmt.Printf("#%04x ", getChipType())
+	massErase()
+	fmt.Print("* ")
+	writeFlash(data)
+	fmt.Print("done.")
 }
 
 func readWithTimeout(t time.Duration) []byte {
@@ -39,7 +41,7 @@ func readWithTimeout(t time.Duration) []byte {
 	case data := <-serialRecv:
 		return data
 	case <-time.After(t):
-		fmt.Println("timeout")
+		//fmt.Println("timeout")
 		return nil
 	}
 }
@@ -52,11 +54,14 @@ func sendByte(b uint8) {
 	checkSum ^= b
 }
 
-func sendCmd(cmd uint8) {
-	sendByte(cmd)
-	sendByte(^cmd)
-	pending = nil
-	wantAck()
+func send2bytes(v int) {
+	sendByte(uint8(v >> 8))
+	sendByte(uint8(v))
+}
+
+func send4bytes(v int) {
+	send2bytes(v >> 16)
+	send2bytes(v)
 }
 
 func getReply() uint8 {
@@ -74,22 +79,27 @@ func getReply() uint8 {
 	return b
 }
 
-func wantAck() {
-	//for getReply() != ACK {
-	//	fmt.Print("-")
-	//}
+func wantAck(retries int) {
 	r := getReply()
-	fmt.Println("reply:", r)
+	for retries > 0 && r == 0 {
+		r = getReply()
+		retries -= 1
+	}
 	if r != ACK {
 		fmt.Printf("\nFailed: %02x\n", r)
-		//panic(nil)
 	}
 	checkSum = 0
 }
 
+func sendCmd(cmd uint8) {
+	sendByte(cmd)
+	sendByte(^cmd)
+	pending = nil
+	wantAck(0)
+}
+
 func connectToTarget() {
 	for {
-		fmt.Print(".") // auto-baud greeting
 		sendByte(0x7F)
 		r := getReply()
 		if r == ACK || r == NAK {
@@ -98,24 +108,67 @@ func connectToTarget() {
 			}
 			break
 		}
+		fmt.Print(".") // connecting...
 		time.Sleep(time.Second)
 	}
-	// got a valid reply, flush
-	//readWithTimeout(100 * time.Millisecond)
-	//pending = nil
 }
 
 func getBootVersion() uint8 {
 	sendCmd(GET_CMD)
 	n := getReply()
-	fmt.Println("bootreply", n)
 	rev := getReply()
 	extended = false
 	for i := 0; i < int(n); i++ {
 		if getReply() == EXTERA_CMD {
 			extended = true
+			fmt.Print("e")
 		}
 	}
-	wantAck()
+	wantAck(0)
 	return rev
+}
+
+func getChipType() uint16 {
+	sendCmd(GETID_CMD)
+	getReply() // should be 1
+	chipType := uint16(getReply()) << 8
+	chipType |= uint16(getReply())
+	wantAck(0)
+	return chipType
+}
+
+func massErase() {
+	sendCmd(ERASE_CMD)
+	sendByte(0xFF)
+	sendByte(checkSum)
+	wantAck(4)
+}
+
+func writeFlash(data []byte) {
+	fmt.Print("writing: ")
+	eraseCount := 0
+	for offset := 0; offset < len(data); offset += 256 {
+		for i := 0; i < eraseCount; i++ {
+			fmt.Print("\b")
+		}
+		msg := fmt.Sprintf("%d/%d ", offset/256+1, (len(data)+255)/256)
+		fmt.Print(msg)
+		eraseCount = len(msg)
+
+		sendCmd(WRITE_CMD)
+		send4bytes(0x08000000 + offset)
+		sendByte(checkSum)
+		wantAck(0)
+		sendByte(256 - 1)
+		for i := 0; i < 256; i++ {
+			if offset+i < len(data) {
+				sendByte(data[offset+i])
+			} else {
+				sendByte(0xFF)
+			}
+		}
+		sendByte(checkSum)
+		wantAck(0)
+		*verbose = false // turn verbose off after one write to reduce output
+	}
 }

@@ -8,14 +8,16 @@ import (
 	"strings"
 	"time"
 
-	"go.bug.st/serial.v1"
+	"github.com/tarm/serial"
 )
 
 var (
 	port = flag.String("p", "", "serial port (COM*, /dev/cu.*, or /dev/tty*)")
 	baud = flag.Int("b", 115200, "serial baud rate")
+	// FIXME: added as hack for now, until we can turn parity on and off
+	even = flag.Bool("u", false, "serial even parity (for uploads only)")
 
-	tty serial.Port
+	tty *serial.Port
 )
 
 // SerialConnect opens and re-opens a serial port and feeds the receive channel.
@@ -26,9 +28,11 @@ func SerialConnect() {
 
 	for {
 		var err error
-		tty, err = serial.Open(*port, &serial.Mode{
-			BaudRate: *baud,
-		})
+		config := &serial.Config{ Name: *port, Baud: *baud }
+		if *even {
+			config.Parity = serial.ParityEven
+		}
+		tty, err = serial.OpenPort(config)
 		if err != nil {
 			time.Sleep(100 * time.Millisecond)
 			continue
@@ -36,6 +40,9 @@ func SerialConnect() {
 
 		// use readline's Stdout to force re-display of current input
 		fmt.Fprintln(console.Stdout(), "[connected]")
+		if *even {
+			commandSend <- "upload"
+		}
 		var data [250]byte
 		for {
 			n, err := tty.Read(data[:])
@@ -43,7 +50,7 @@ func SerialConnect() {
 				break
 			}
 			check(err)
-			fmt.Printf("<%#v", data[:n])
+			//fmt.Printf("<%#v", data[:n])
 			serialRecv <- data[:n]
 		}
 		fmt.Print("\n[disconnected] ")
@@ -57,7 +64,7 @@ func SerialDispatch() {
 	go func() {
 		for data := range serialSend {
 			// FIXME need a way to recover from write-while-closed panics
-			fmt.Printf(">%#v", data)
+			//fmt.Printf(">%#v", data)
 			tty.Write(data)
 		}
 	}()
@@ -98,4 +105,8 @@ func WrappedUpload(argv []string) {
 	//defer tty.SetMode(&serial.Mode{BaudRate: *baud, Parity: serial.NoParity})
 
 	Uploader(MustAsset("data/mecrisp.bin"))
+
+	// FIXME, see "even" flag
+	console.Close()
+	os.Exit(0)
 }
