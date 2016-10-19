@@ -8,64 +8,42 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tarm/serial"
+	"go.bug.st/serial.v1"
 )
 
 var (
 	port = flag.String("p", "", "serial port (COM*, /dev/cu.*, or /dev/tty*)")
 	baud = flag.Int("b", 115200, "serial baud rate")
 
-	// FIXME - temporary hack, since I can't adjust serial parity on the fly
-	upload = flag.String("u", "", "upload the specified firmware, then quit")
-
-	tty        *serial.Port
-	uploadMode = false
-	uploadDone = make(chan bool, 0)
+	tty serial.Port
 )
 
 // SerialConnect opens and re-opens a serial port and feeds the receive channel.
 func SerialConnect() {
 	for {
 		var err error
-		config := serial.Config{
-			Name: *port,
-			Baud: *baud,
-			ReadTimeout: time.Second,
-		}
-		if uploadMode {
-			config.Parity = serial.ParityEven
-		}
-		tty, err = serial.OpenPort(&config)
+		tty, err = serial.Open(*port, &serial.Mode{
+			BaudRate: *baud,
+		})
 		if err != nil {
 			time.Sleep(100 * time.Millisecond)
 			continue
 		}
 
-		if uploadMode {
-			// upload needs a serial port, reopened with even parity
-			// close and reopen without parity once it is done
-			<-uploadDone
-			uploadMode = false
-		} else {
-			// use readline's Stdout to force re-display of current input
-			fmt.Fprintln(console.Stdout(), "[connected]")
-			for {
-				data := make([]byte, 250)
-				fmt.Println("read")
-				n, err := tty.Read(data)
-				fmt.Println(err)
-				if err == io.EOF {
-					break
-				}
-				check(err)
-				serialRecv <- data[:n]
+		// use readline's Stdout to force re-display of current input
+		fmt.Fprintln(console.Stdout(), "[connected]")
+		var data [250]byte
+		for {
+			n, err := tty.Read(data[:])
+			if err == io.EOF {
+				break
 			}
-			fmt.Print("\n[disconnected] ")
+			check(err)
+			serialRecv <- data[:n]
 		}
+		fmt.Print("\n[disconnected] ")
 
-		if tty != nil {
-			tty.Close()
-		}
+		tty.Close()
 	}
 }
 
@@ -93,11 +71,14 @@ func SpecialCommand(line string) bool {
 		switch cmd[0] {
 
 		case "upload":
-			uploadMode = true
-			t := tty
-			tty = nil
-			t.Close()
+			tty.SetMode(&serial.Mode{
+				BaudRate: *baud,
+				Parity: serial.EvenParity,
+			})
 			Uploader(MustAsset("data/mecrisp.bin"), tty)
+			tty.SetMode(&serial.Mode{
+				BaudRate: *baud,
+			})
 
 		default:
 			return true
