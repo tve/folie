@@ -43,9 +43,9 @@ func SerialConnect() {
 		if *upload != "" {
 			commandSend <- "upload " + *upload
 		}
-		var data [250]byte
 		for {
-			n, err := tty.Read(data[:])
+			data := make([]byte, 250)
+			n, err := tty.Read(data)
 			if err == io.EOF {
 				break
 			}

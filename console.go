@@ -45,14 +45,13 @@ func insertCRs(out *os.File) *os.File {
 
 	go func() {
 		defer readFile.Close()
+		var data [250]byte
 		for {
-			data := make([]byte, 250)
-			n, err := readFile.Read(data)
+			n, err := readFile.Read(data[:])
 			if err != nil {
 				break
 			}
-			data = bytes.Replace(data[:n], []byte("\n"), []byte("\r\n"), -1)
-			out.Write(data)
+			out.Write(bytes.Replace(data[:n], []byte("\n"), []byte("\r\n"), -1))
 		}
 	}()
 

@@ -30,7 +30,7 @@ func Uploader(data []byte) {
 
 	connectToTarget()
 
-	fmt.Printf(" v%02x ", getBootVersion())
+	fmt.Printf("v%02x ", getBootVersion())
 	fmt.Printf("#%04x ", getChipType())
 
 	sendCmd(RDUNP_CMD)
