@@ -20,6 +20,10 @@ var (
 
 // SerialConnect opens and re-opens a serial port and feeds the receive channel.
 func SerialConnect() {
+	///ports, err := serial.GetPortsList()
+	///check(err)
+	///fmt.Printf("Found ports: %v\n", ports)
+
 	for {
 		var err error
 		tty, err = serial.Open(*port, &serial.Mode{
@@ -39,6 +43,7 @@ func SerialConnect() {
 				break
 			}
 			check(err)
+			fmt.Printf("<%#v", data[:n])
 			serialRecv <- data[:n]
 		}
 		fmt.Print("\n[disconnected] ")
@@ -49,15 +54,19 @@ func SerialConnect() {
 
 // SerialDispatch handles all incoming and outgoing serial data.
 func SerialDispatch() {
+	go func() {
+		for data := range serialSend {
+			// FIXME need a way to recover from write-while-closed panics
+			fmt.Printf(">%#v", data)
+			tty.Write(data)
+		}
+	}()
+
 	for {
 		select {
 
 		case data := <-serialRecv:
 			os.Stdout.Write(data)
-
-		case data := <-serialSend:
-			// FIXME need a way to recover from write-while-closed panics
-			tty.Write(data)
 
 		case line := <-commandSend:
 			if !SpecialCommand(line) {
@@ -85,13 +94,8 @@ func SpecialCommand(line string) bool {
 
 func WrappedUpload(argv []string) {
 	// temporarily switch to even parity during upload
-	tty.SetMode(&serial.Mode{
-		BaudRate: *baud,
-		Parity:   serial.EvenParity,
-	})
-	defer tty.SetMode(&serial.Mode{
-		BaudRate: *baud,
-	})
+	//tty.SetMode(&serial.Mode{BaudRate: *baud, Parity: serial.EvenParity})
+	//defer tty.SetMode(&serial.Mode{BaudRate: *baud, Parity: serial.NoParity})
 
 	Uploader(MustAsset("data/mecrisp.bin"))
 }
