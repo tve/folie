@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -124,19 +125,29 @@ func WrappedOpen(argv []string) {
 }
 
 func WrappedUpload(argv []string) {
-	// temporarily switch to even parity during upload
-	tty.SetMode(&serial.Mode{BaudRate: *baud, Parity: serial.EvenParity})
-	defer tty.SetMode(&serial.Mode{BaudRate: *baud})
-
 	name := "blink"
 	if len(argv) > 1 {
 		name = argv[1]
 	}
+
+	// try built-in images first
 	data, err := Asset("data/" + name + ".bin")
 	if err != nil {
-		fmt.Println(err.Error())
-		return
+		// else try opening the arg as file
+		f, err := os.Open(name)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		defer f.Close()
+
+		data, err = ioutil.ReadAll(f)
+		check(err)
 	}
+
+	// temporarily switch to even parity during upload
+	tty.SetMode(&serial.Mode{BaudRate: *baud, Parity: serial.EvenParity})
+	defer tty.SetMode(&serial.Mode{BaudRate: *baud})
 
 	Uploader(data)
 }
