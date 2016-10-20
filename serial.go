@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"strconv"
 	"time"
 
 	"go.bug.st/serial.v1"
@@ -15,14 +16,16 @@ var (
 	port = flag.String("p", "", "serial port (COM*, /dev/cu.*, or /dev/tty*)")
 	baud = flag.Int("b", 115200, "serial baud rate")
 
-	tty serial.Port
+	tty       serial.Port
+	openBlock = make(chan string)
 )
 
 // SerialConnect opens and re-opens a serial port and feeds the receive channel.
 func SerialConnect() {
-	///ports, err := serial.GetPortsList()
-	///check(err)
-	///fmt.Printf("Found ports: %v\n", ports)
+	if *port == "" {
+		commandSend <- "open"
+		*port = <-openBlock
+	}
 
 	for {
 		var err error
@@ -82,6 +85,11 @@ func SpecialCommand(line string) bool {
 	if len(cmd) > 0 {
 		switch cmd[0] {
 
+		case "open":
+			// TODO can't be typed in to re-open, only usable on startup
+			fmt.Print(line, " ")
+			WrappedOpen(cmd)
+
 		case "upload":
 			fmt.Print(line, " ")
 			WrappedUpload(cmd)
@@ -91,6 +99,19 @@ func SpecialCommand(line string) bool {
 		}
 	}
 	return true
+}
+
+func WrappedOpen(argv []string) {
+	ports, err := serial.GetPortsList()
+	check(err)
+	fmt.Println("Select a serial port:")
+	for i, p := range ports {
+		fmt.Println("  ", i, "=", p)
+	}
+	reply := <-commandSend
+	sel, err := strconv.Atoi(reply)
+	check(err)
+	openBlock <- ports[sel]
 }
 
 func WrappedUpload(argv []string) {
