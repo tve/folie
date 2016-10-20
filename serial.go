@@ -23,7 +23,7 @@ var (
 // SerialConnect opens and re-opens a serial port and feeds the receive channel.
 func SerialConnect() {
 	if *port == "" {
-		commandSend <- "open"
+		commandSend <- "<open>"
 		*port = <-openBlock
 	}
 
@@ -85,7 +85,7 @@ func SpecialCommand(line string) bool {
 	if len(cmd) > 0 {
 		switch cmd[0] {
 
-		case "open":
+		case "<open>":
 			// TODO can't be typed in to re-open, only usable on startup
 			fmt.Print(line, " ")
 			WrappedOpen(cmd)
@@ -109,6 +109,7 @@ func WrappedOpen(argv []string) {
 		fmt.Println("  ", i, "=", p)
 	}
 	reply := <-commandSend
+	fmt.Println(reply)
 	sel, err := strconv.Atoi(reply)
 	check(err)
 	openBlock <- ports[sel]
