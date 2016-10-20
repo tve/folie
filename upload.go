@@ -55,7 +55,7 @@ func Uploader(data []byte) {
 
 	connectToTarget()
 
-	massErase()
+	massErase(len(data))
 	fmt.Print("E ")
 
 	writeFlash(data)
@@ -163,10 +163,23 @@ func getChipType() uint16 {
 	return chipType
 }
 
-func massErase() {
-	sendCmd(ERASE_CMD)
-	sendByte(0xFF)
-	sendByte(0x00)
+func massErase(size int) {
+	if extended {
+		sendCmd(EXTERA_CMD)
+		// for some reason, a "full" mass erase is rejected with a NAK
+		//send2bytes(0xFFFF)
+		// ... so erase a list of segments instead, 1 more than needed
+		// this will only erase the pages to be programmed!
+		n := (size+127)/128 // assumes L0xx (0x417), which has 128-byte pages
+		send2bytes(n-1)
+		for i := 0; i < n; i++ {
+			send2bytes(i)
+		}
+	} else {
+		sendCmd(ERASE_CMD)
+		sendByte(0xFF)
+	}
+	sendByte(checkSum)
 	wantAck(4)
 }
 
