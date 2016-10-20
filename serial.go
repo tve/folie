@@ -104,15 +104,24 @@ func SpecialCommand(line string) bool {
 func WrappedOpen(argv []string) {
 	ports, err := serial.GetPortsList()
 	check(err)
+
+	var myPorts []string
+	for _, p := range ports {
+		if !strings.HasPrefix(p, "/dev/tty.") {
+			myPorts = append(myPorts, p)
+		}
+	}
+
 	fmt.Println("Select a serial port:")
-	for i, p := range ports {
+	for i, p := range myPorts {
 		fmt.Println("  ", i+1, "=", p)
 	}
 	reply := <-commandSend
 	fmt.Println(reply)
+
 	sel, err := strconv.Atoi(reply)
 	check(err)
-	openBlock <- ports[sel-1]
+	openBlock <- myPorts[sel-1]
 }
 
 func WrappedUpload(argv []string) {
