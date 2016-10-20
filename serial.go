@@ -95,7 +95,7 @@ func SpecialCommand(line string) bool {
 
 func WrappedUpload(argv []string) {
 	// temporarily switch to even parity during upload
-	tty.SetMode(&serial.Mode{BaudRate: 57600, Parity: serial.EvenParity})
+	tty.SetMode(&serial.Mode{BaudRate: *baud, Parity: serial.EvenParity})
 	defer tty.SetMode(&serial.Mode{BaudRate: *baud})
 
 	name := "blink"
