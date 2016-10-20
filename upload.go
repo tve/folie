@@ -26,6 +26,7 @@ var (
 	extended bool
 )
 
+// Uploader implements the STM32 usart boot protocol to upload new firmware.
 func Uploader(data []byte) {
 	defer fmt.Println()
 
@@ -33,14 +34,14 @@ func Uploader(data []byte) {
 	if len(data) > 11 && data[0] == ':' {
 		_, err := hex.DecodeString(string(data[1:11]))
 		if err == nil {
-			data = hexToBin(data)
+			data = HexToBin(data)
 		}
 	}
 	fmt.Printf("\n  %db ", len(data))
 
 	connectToTarget()
 
-	fmt.Printf("v%02x ", getBootVersion())
+	fmt.Printf("V%02x ", getBootVersion())
 	fmt.Printf("#%04x ", getChipType())
 
 	sendCmd(RDUNP_CMD)
@@ -55,8 +56,15 @@ func Uploader(data []byte) {
 
 	connectToTarget()
 
-	massErase(len(data))
-	fmt.Print("E ")
+	if extended {
+		// assumes L0xx (0x417), which has 128-byte pages
+		pages := (len(data) + 127) / 128
+		massErase(pages)
+		fmt.Printf("E%d* ", pages)
+	} else {
+		massErase(0)
+		fmt.Print("E ")
+	}
 
 	writeFlash(data)
 	fmt.Print("done.")
@@ -147,7 +155,6 @@ func getBootVersion() uint8 {
 	for i := 0; i < int(n); i++ {
 		if getReply() == EXTERA_CMD {
 			extended = true
-			fmt.Print("e")
 		}
 	}
 	wantAck(0)
@@ -163,16 +170,15 @@ func getChipType() uint16 {
 	return chipType
 }
 
-func massErase(size int) {
+func massErase(pages int) {
 	if extended {
 		sendCmd(EXTERA_CMD)
 		// for some reason, a "full" mass erase is rejected with a NAK
 		//send2bytes(0xFFFF)
 		// ... so erase a list of segments instead, 1 more than needed
 		// this will only erase the pages to be programmed!
-		n := (size+127)/128 // assumes L0xx (0x417), which has 128-byte pages
-		send2bytes(n-1)
-		for i := 0; i < n; i++ {
+		send2bytes(pages - 1)
+		for i := 0; i < pages; i++ {
 			send2bytes(i)
 		}
 		sendByte(checkSum)
@@ -213,7 +219,8 @@ func writeFlash(data []byte) {
 	}
 }
 
-func hexToBin(data []byte) []byte {
+// HexToBin converts an Intel-hex format file to binary.
+func HexToBin(data []byte) []byte {
 	var bin []byte
 	for _, line := range strings.Split(string(data), "\n") {
 		if strings.HasSuffix(line, "\r") {

@@ -14,10 +14,10 @@ var (
 // ConsoleTask listens to the console with readline for editing & history.
 func ConsoleTask() {
 	if readline.IsTerminal(1) {
-		os.Stdout = insertCRs(os.Stdout)
+		os.Stdout = InsertCRs(os.Stdout)
 	}
 	if readline.IsTerminal(2) {
-		os.Stderr = insertCRs(os.Stderr)
+		os.Stderr = InsertCRs(os.Stderr)
 	}
 
 	var err error
@@ -38,8 +38,8 @@ func ConsoleTask() {
 	}
 }
 
-// insertCRs is used to insert lost CRs when readline is active
-func insertCRs(out *os.File) *os.File {
+// InsertCRs is used to insert lost CRs when readline is active
+func InsertCRs(out *os.File) *os.File {
 	readFile, writeFile, err := os.Pipe()
 	check(err)
 

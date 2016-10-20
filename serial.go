@@ -47,7 +47,6 @@ func SerialConnect() {
 				break
 			}
 			check(err)
-			//fmt.Printf("<%#v", data[:n])
 			serialRecv <- data[:n]
 		}
 		fmt.Print("\n[disconnected] ")
@@ -61,7 +60,6 @@ func SerialDispatch() {
 	go func() {
 		for data := range serialSend {
 			// FIXME need a way to recover from write-while-closed panics
-			//fmt.Printf(">%#v", data)
 			tty.Write(data)
 		}
 	}()
