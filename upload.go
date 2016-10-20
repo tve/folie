@@ -175,11 +175,12 @@ func massErase(size int) {
 		for i := 0; i < n; i++ {
 			send2bytes(i)
 		}
+		sendByte(checkSum)
 	} else {
 		sendCmd(ERASE_CMD)
 		sendByte(0xFF)
+		sendByte(0x00)
 	}
-	sendByte(checkSum)
 	wantAck(4)
 }
 
