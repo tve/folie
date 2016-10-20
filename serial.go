@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 	"strconv"
+	"strings"
 	"time"
 
 	"go.bug.st/serial.v1"
@@ -106,13 +106,13 @@ func WrappedOpen(argv []string) {
 	check(err)
 	fmt.Println("Select a serial port:")
 	for i, p := range ports {
-		fmt.Println("  ", i, "=", p)
+		fmt.Println("  ", i+1, "=", p)
 	}
 	reply := <-commandSend
 	fmt.Println(reply)
 	sel, err := strconv.Atoi(reply)
 	check(err)
-	openBlock <- ports[sel]
+	openBlock <- ports[sel-1]
 }
 
 func WrappedUpload(argv []string) {
