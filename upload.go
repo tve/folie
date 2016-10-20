@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/hex"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -26,6 +28,14 @@ var (
 
 func Uploader(data []byte) {
 	defer fmt.Println()
+
+	// convert to binary if first few bytes look like they are in "ihex" format
+	if len(data) > 11 && data[0] == ':' {
+		_, err := hex.DecodeString(string(data[1:11]))
+		if err == nil {
+			data = hexToBin(data)
+		}
+	}
 	fmt.Printf("\n  %db ", len(data))
 
 	connectToTarget()
@@ -187,4 +197,32 @@ func writeFlash(data []byte) {
 		wantAck(0)
 		*verbose = false // turn verbose off after one write to reduce output
 	}
+}
+
+func hexToBin(data []byte) []byte {
+	var bin []byte
+	for _, line := range strings.Split(string(data), "\n") {
+		if strings.HasSuffix(line, "\r") {
+			line = line[:len(line)-1]
+		}
+		if len(line) == 0 {
+			continue
+		}
+		if line[0] != ':' || len(line) < 11 {
+			fmt.Println("Not ihex format:", line)
+			return data
+		}
+		bytes, err := hex.DecodeString(line[1:])
+		check(err)
+		if bytes[3] != 0x00 {
+			continue
+		}
+		offset := (int(bytes[1]) << 8) + int(bytes[2])
+		length := bytes[0]
+		for offset > len(bin) {
+			bin = append(bin, 0xFF)
+		}
+		bin = append(bin, bytes[4:4+length]...)
+	}
+	return bin
 }
