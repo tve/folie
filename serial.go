@@ -36,12 +36,6 @@ func SerialConnect() {
 
 		// use readline's Stdout to force re-display of current input
 		fmt.Fprintln(console.Stdout(), "[connected]")
-<<<<<<< HEAD
-		if *upload != "" {
-			commandSend <- "upload " + *upload
-		}
-=======
->>>>>>> bugst
 		for {
 			data := make([]byte, 250)
 			n, err := tty.Read(data)
