@@ -8,16 +8,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tarm/serial"
+	"go.bug.st/serial.v1"
 )
 
 var (
 	port = flag.String("p", "", "serial port (COM*, /dev/cu.*, or /dev/tty*)")
 	baud = flag.Int("b", 115200, "serial baud rate")
-	// FIXME: added as hack for now, until we can turn parity on and off
-	upload = flag.String("u", "", "upload a file and quit")
 
-	tty *serial.Port
+	tty serial.Port
 )
 
 // SerialConnect opens and re-opens a serial port and feeds the receive channel.
@@ -28,11 +26,9 @@ func SerialConnect() {
 
 	for {
 		var err error
-		config := &serial.Config{Name: *port, Baud: *baud}
-		if *upload != "" {
-			config.Parity = serial.ParityEven
-		}
-		tty, err = serial.OpenPort(config)
+		tty, err = serial.Open(*port, &serial.Mode{
+			BaudRate: *baud,
+		})
 		if err != nil {
 			time.Sleep(100 * time.Millisecond)
 			continue
@@ -40,9 +36,12 @@ func SerialConnect() {
 
 		// use readline's Stdout to force re-display of current input
 		fmt.Fprintln(console.Stdout(), "[connected]")
+<<<<<<< HEAD
 		if *upload != "" {
 			commandSend <- "upload " + *upload
 		}
+=======
+>>>>>>> bugst
 		for {
 			data := make([]byte, 250)
 			n, err := tty.Read(data)
@@ -102,8 +101,8 @@ func SpecialCommand(line string) bool {
 
 func WrappedUpload(argv []string) {
 	// temporarily switch to even parity during upload
-	//tty.SetMode(&serial.Mode{BaudRate: *baud, Parity: serial.EvenParity})
-	//defer tty.SetMode(&serial.Mode{BaudRate: *baud, Parity: serial.NoParity})
+	tty.SetMode(&serial.Mode{BaudRate: *baud, Parity: serial.EvenParity})
+	defer tty.SetMode(&serial.Mode{BaudRate: *baud})
 
 	name := "blink"
 	if len(argv) > 1 {
@@ -116,9 +115,4 @@ func WrappedUpload(argv []string) {
 	}
 
 	Uploader(data)
-	// FIXME, see the "-u" flag
-	fmt.Print("Press return... ")
-	console.Close()
-	fmt.Println("Press return... ")
-	os.Exit(0)
 }
