@@ -18,6 +18,8 @@ builds:
 	@ GOOS=linux GOARCH=arm GOARM=6 go build -o $@/folie-arm
 	@ echo "  ARMv8 64-bit"
 	@ GOOS=linux GOARCH=arm64 go build -o $@/folie-arm64
+	@ echo "  FreeBSD 64-bit"
+	@ GOOS=freebsd GOARCH=amd64 go build -o $@/folie-freebsd64
 	@ gzip $@/folie-*
 	@ echo; ls -l builds/*; echo
 
