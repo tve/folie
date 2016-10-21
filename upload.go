@@ -191,6 +191,9 @@ func massErase(pages int) {
 }
 
 func writeFlash(data []byte) {
+	origVerbose := *verbose
+	defer func() { *verbose = origVerbose }()
+
 	fmt.Print("writing: ")
 	eraseCount := 0
 	for offset := 0; offset < len(data); offset += 256 {
@@ -215,7 +218,7 @@ func writeFlash(data []byte) {
 		}
 		sendByte(checkSum)
 		wantAck(0)
-		*verbose = false // turn verbose off after one write to reduce output
+		*verbose = false // reduce debug output after the first page write
 	}
 }
 

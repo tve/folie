@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	verbose = flag.Bool("v", false, "verbose output, for debugging only")
+	verbose = flag.Bool("v", false, "more verbose output, for debugging")
 
 	serialRecv  = make(chan []byte, 0)
 	serialSend  = make(chan []byte, 0)
