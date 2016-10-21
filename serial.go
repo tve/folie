@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"syscall"
 
 	"go.bug.st/serial.v1"
 )
@@ -29,21 +30,21 @@ func SerialConnect() {
 	}
 
 	for {
-		var err error
-		tty, err = serial.Open(*port, &serial.Mode{
+		conn, err := serial.Open(*port, &serial.Mode{
 			BaudRate: *baud,
 		})
 		if err != nil {
 			time.Sleep(100 * time.Millisecond)
 			continue
 		}
+		tty = conn
 
 		// use readline's Stdout to force re-display of current input
-		fmt.Fprintln(console.Stdout(), "[connected]")
+		fmt.Fprintf(console.Stdout(), "[connected: %s]\n", *port)
 		for {
 			data := make([]byte, 250)
 			n, err := tty.Read(data)
-			if err == io.EOF {
+			if err == io.EOF || err == syscall.ENXIO {
 				break
 			}
 			check(err)
@@ -52,6 +53,7 @@ func SerialConnect() {
 		fmt.Print("\n[disconnected] ")
 
 		tty.Close()
+		tty = nil
 	}
 }
 
@@ -60,7 +62,11 @@ func SerialDispatch() {
 	go func() {
 		for data := range serialSend {
 			// FIXME need a way to recover from write-while-closed panics
-			tty.Write(data)
+			if tty != nil {
+				tty.Write(data)
+			} else {
+				fmt.Printf("[write error: %s]\n", *port)
+			}
 		}
 	}()
 
