@@ -4,7 +4,9 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
+	"os"
 )
 
 var (
@@ -17,6 +19,10 @@ var (
 
 func main() {
 	flag.Parse()
+
+	if len(os.Args) == 1 {
+		fmt.Println("Folie", VERSION, " (type ctrl-d or ctrl-c to quit)")
+	}
 
 	go SerialConnect()
 	go SerialDispatch()

@@ -3,7 +3,7 @@ test:
 	go test
 
 # build folie for several platforms and compress for release
-builds:
+builds: version.go
 	@ rm -rf $@; mkdir $@
 	@ echo Re-building binaries:
 	@ echo "  MacOSX 64-bit"
@@ -23,7 +23,11 @@ builds:
 	@ gzip $@/folie-*
 	@ echo; ls -l builds/*; echo
 
+version.go:
+	@ echo "VERSION = `git describe --tags`"
+	@ sed -i '' "s/VERSION.*/VERSION = \"`git describe --tags`\"/" $@
+
 clean:
 	rm -rf folie folie.exe builds
 
-.PHONY: test builds clean
+.PHONY: test builds version.go clean
