@@ -28,8 +28,9 @@ func main() {
 	go SerialConnect()
 	go SerialDispatch()
 
-	for err := range done {
+	if err, ok := <-done; ok {
 		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 }
 
