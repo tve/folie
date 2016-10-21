@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	verbose = flag.Bool("v", false, "more verbose output, for debugging")
+	verbose = flag.Bool("v", false, "verbose output for debugging")
 
 	serialRecv  = make(chan []byte)
 	serialSend  = make(chan []byte)
@@ -21,7 +21,7 @@ func main() {
 	flag.Parse()
 
 	if len(os.Args) == 1 {
-		fmt.Println("Folie", VERSION, "(type ctrl-d or ctrl-c to quit)")
+		fmt.Println("Folie", VERSION, "(type ctrl-d or ctrl-c to quit)\n")
 	}
 
 	go ConsoleTask()
@@ -29,7 +29,10 @@ func main() {
 	go SerialDispatch()
 
 	if err, ok := <-done; ok {
-		fmt.Fprintln(os.Stderr, err)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		console.Close()
 		os.Exit(1)
 	}
 }

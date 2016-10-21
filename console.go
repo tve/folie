@@ -27,12 +27,12 @@ func ConsoleTask() {
 	}
 	console, err = readline.NewEx(&config)
 	check(err)
-	defer close(done)
 
 	for {
 		line, err := console.Readline()
 		if err != nil {
-			break
+			close(done)
+			return
 		}
 		commandSend <- line
 	}

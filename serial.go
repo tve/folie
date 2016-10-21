@@ -130,8 +130,15 @@ func WrappedOpen(argv []string) {
 	reply := <-commandSend
 	fmt.Println(reply)
 
-	sel, err := strconv.Atoi(reply)
-	check(err)
+	sel, _ := strconv.Atoi(reply)
+
+	// nasty way to quit on index errors, since there's no other useful option!
+	defer func() {
+		if e := recover(); e != nil {
+			done <- nil // forces quit without producing an error message
+		}
+	}()
+
 	openBlock <- ports[sel-1]
 }
 
