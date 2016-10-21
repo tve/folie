@@ -100,7 +100,7 @@ func SpecialCommand(line string) bool {
 			// TODO can't be typed in to re-open, only usable on startup
 			WrappedOpen(cmd)
 
-		case "upload":
+		case "!u", "!upload":
 			fmt.Print(line, " ")
 			WrappedUpload(cmd)
 
@@ -135,16 +135,20 @@ func WrappedOpen(argv []string) {
 }
 
 func WrappedUpload(argv []string) {
-	name := "blink"
-	if len(argv) > 1 {
-		name = argv[1]
+	if len(argv) == 1 {
+		fmt.Println("\nBuilt-in firmware images:")
+		names, _ := AssetDir("data")
+		for _, name := range names {
+			fmt.Println("  ", name)
+		}
+		return
 	}
 
 	// try built-in images first
-	data, err := Asset("data/" + name + ".bin")
+	data, err := Asset("data/" + argv[1])
 	if err != nil {
 		// else try opening the arg as file
-		f, err := os.Open(name)
+		f, err := os.Open(argv[1])
 		if err != nil {
 			fmt.Println(err)
 			return
