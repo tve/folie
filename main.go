@@ -5,16 +5,16 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
 )
 
 var (
 	verbose = flag.Bool("v", false, "more verbose output, for debugging")
 
-	serialRecv  = make(chan []byte, 0)
-	serialSend  = make(chan []byte, 0)
-	commandSend = make(chan string, 0)
+	serialRecv  = make(chan []byte)
+	serialSend  = make(chan []byte)
+	commandSend = make(chan string)
+	done        = make(chan error)
 )
 
 func main() {
@@ -24,15 +24,17 @@ func main() {
 		fmt.Println("Folie", VERSION, "(type ctrl-d or ctrl-c to quit)")
 	}
 
+	go ConsoleTask()
 	go SerialConnect()
 	go SerialDispatch()
 
-	ConsoleTask()
+	for err := range done {
+		fmt.Fprintln(os.Stderr, err)
+	}
 }
 
 func check(e error) {
 	if e != nil {
-		log.Fatal(e)
-		//panic(e)
+		done <- e
 	}
 }

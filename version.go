@@ -1,3 +1,3 @@
 package main
 
-const VERSION = "v2.1-7-g5903e85"
+const VERSION = "v2.1-8-ga9cee19"

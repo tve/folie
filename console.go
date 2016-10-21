@@ -27,7 +27,6 @@ func ConsoleTask() {
 	}
 	console, err = readline.NewEx(&config)
 	check(err)
-	defer console.Close()
 
 	for {
 		line, err := console.Readline()
@@ -36,6 +35,8 @@ func ConsoleTask() {
 		}
 		commandSend <- line
 	}
+
+	close(done)
 }
 
 // InsertCRs is used to insert lost CRs when readline is active

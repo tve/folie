@@ -8,8 +8,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 	"syscall"
+	"time"
 
 	"go.bug.st/serial.v1"
 )
@@ -61,8 +61,7 @@ func SerialConnect() {
 func SerialDispatch() {
 	go func() {
 		for data := range serialSend {
-			// FIXME need a way to recover from write-while-closed panics
-			if tty != nil {
+			if tty != nil { // avoid write-while-closed panics
 				tty.Write(data)
 			} else {
 				fmt.Printf("[write error: %s]\n", *port)
