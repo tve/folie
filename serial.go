@@ -68,11 +68,18 @@ func SerialDispatch() {
 		select {
 
 		case data := <-serialRecv:
+			if *verbose {
+				fmt.Printf("recv: %q\n", data)
+			}
 			os.Stdout.Write(data)
 
 		case line := <-commandSend:
 			if !SpecialCommand(line) {
-				serialSend <- []byte(line + "\r")
+				data := []byte(line + "\r")
+				if *verbose {
+					fmt.Printf("send: %q\n", data)
+				}
+				serialSend <- data
 			}
 		}
 	}
