@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"syscall"
@@ -138,8 +139,10 @@ func WrappedUpload(argv []string) {
 	if len(argv) == 1 {
 		fmt.Println("\nBuilt-in firmware images:")
 		names, _ := AssetDir("data")
+		sort.Strings(names)
 		for _, name := range names {
-			fmt.Println("  ", name)
+			info, _ := AssetInfo("data/" + name)
+			fmt.Printf("  %-15s %5db\n", name, info.Size())
 		}
 		return
 	}
