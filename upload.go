@@ -37,7 +37,7 @@ func Uploader(data []byte) {
 			data = HexToBin(data)
 		}
 	}
-	fmt.Printf("\n  %db ", len(data))
+	fmt.Printf("  %db ", len(data))
 
 	connectToTarget()
 

@@ -101,8 +101,12 @@ func SpecialCommand(line string) bool {
 			// TODO can't be typed in to re-open, only usable on startup
 			WrappedOpen(cmd)
 
+		case "!i", "!include":
+			fmt.Println(line)
+			WrappedInclude(cmd)
+
 		case "!u", "!upload":
-			fmt.Print(line, " ")
+			fmt.Println(line)
 			WrappedUpload(cmd)
 
 		default:
@@ -142,9 +146,23 @@ func WrappedOpen(argv []string) {
 	openBlock <- ports[sel-1]
 }
 
+func WrappedInclude(argv []string) {
+	if len(argv) == 1 {
+		fmt.Printf("usage: %s <filename>\n", argv[0])
+		return
+	}
+	if includeFile(argv[1]) {
+		fmt.Println("Done.")
+	}
+}
+
+func includeFile(name string) bool {
+	return true
+}
+
 func WrappedUpload(argv []string) {
 	if len(argv) == 1 {
-		fmt.Println("\nBuilt-in firmware images:")
+		fmt.Println("Built-in firmware images:")
 		names, _ := AssetDir("data")
 		sort.Strings(names)
 		for _, name := range names {
