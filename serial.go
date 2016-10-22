@@ -148,10 +148,10 @@ func WrappedOpen(argv []string) {
 
 func WrappedInclude(argv []string) {
 	if len(argv) == 1 {
-		fmt.Printf("usage: %s <filename>\n", argv[0])
+		fmt.Printf("Usage: %s <filename>\n", argv[0])
 		return
 	}
-	if includeFile(argv[1]) {
+	if IncludeFile(argv[1]) {
 		fmt.Println("Done.")
 	}
 }

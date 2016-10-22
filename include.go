@@ -8,10 +8,8 @@ import (
 	"time"
 )
 
-func includeFile(name string) bool {
-	//incLevel <- +1
-	//defer func() { incLevel <- -1 }()
-
+// IncludeFile sends out one file, expanding embdded includes as needed.
+func IncludeFile(name string) bool {
 	lineNum := 0
 	fmt.Printf("\\       >>> include %s\n", name)
 	defer func() {
@@ -39,8 +37,14 @@ func includeFile(name string) bool {
 			continue // don't send empty or comment-only lines
 		}
 
-		if !parseAndSend(line) {
-			return false
+		if strings.HasPrefix(line, "include ") {
+			for _, fname := range strings.Split(line[8:], " ") {
+				if !IncludeFile(fname) {
+					return false
+				}
+			}
+		} else {
+			commandSend <- line
 		}
 	}
 
@@ -59,17 +63,4 @@ func throttledSend(quitter chan struct{}) {
 			time.Sleep(100 * time.Millisecond)
 		}
 	}
-}
-
-func parseAndSend(line string) bool {
-	if strings.HasPrefix(line, "include ") {
-		for _, fname := range strings.Split(line[8:], " ") {
-			if !includeFile(fname) {
-				return false
-			}
-		}
-	} else {
-		commandSend <- line
-	}
-	return true
 }
