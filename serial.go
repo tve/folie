@@ -113,9 +113,9 @@ func SpecialCommand(line string) bool {
 			// TODO can't be typed in to re-open, only usable on startup
 			WrappedOpen(cmd)
 
-		case "!i", "!include":
+		case "!s", "!send":
 			fmt.Println(line)
-			WrappedInclude(cmd)
+			WrappedSend(cmd)
 
 		case "!u", "!upload":
 			fmt.Println(line)
@@ -158,12 +158,12 @@ func WrappedOpen(argv []string) {
 	openBlock <- ports[sel-1]
 }
 
-func WrappedInclude(argv []string) {
+func WrappedSend(argv []string) {
 	if len(argv) == 1 {
 		fmt.Printf("Usage: %s <filename>\n", argv[0])
 		return
 	}
-	if IncludeFile(argv[1]) {
+	if SendFile(argv[1]) {
 		fmt.Println("ok.")
 	}
 }

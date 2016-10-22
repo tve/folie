@@ -15,13 +15,13 @@ var (
 	currLine int
 )
 
-// IncludeFile sends out one file, expanding embdded includes as needed.
-func IncludeFile(name string) bool {
+// SendFile sends out one file, expanding embdded includes as needed.
+func SendFile(name string) bool {
 	prevFile := currFile
 	prevLine := currLine
 	currFile = path.Base(name)
 	currLine = 0
-	fmt.Printf("\\       >>> include %s\n", currFile)
+	fmt.Printf("\\       >>> sending %s\n", currFile)
 	defer func() {
 		fmt.Printf("\\       <<<<<<<<<<< %s (%d lines)\n", currFile, currLine)
 		currFile = prevFile
@@ -47,7 +47,7 @@ func IncludeFile(name string) bool {
 
 		if strings.HasPrefix(line, "include ") {
 			for _, fname := range strings.Split(line[8:], " ") {
-				if !IncludeFile(fname) {
+				if !SendFile(fname) {
 					return false
 				}
 			}
