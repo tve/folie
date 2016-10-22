@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"os"
 	"strings"
@@ -23,10 +24,6 @@ func IncludeFile(name string) bool {
 	}
 	defer f.Close()
 
-	throttleDone := make(chan struct{})
-	defer close(throttleDone)
-	go throttledSend(throttleDone)
-
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -44,23 +41,46 @@ func IncludeFile(name string) bool {
 				}
 			}
 		} else {
-			commandSend <- line
+			serialSend <- []byte(line + "\r")
+			match(line + " ")
 		}
 	}
 
 	return true
 }
 
-func throttledSend(quitter chan struct{}) {
+func match(needle string) {
+	timeout := time.After(3 * time.Second)
+
+	var pending []byte
 	for {
 		select {
-		case <-quitter:
-			return
+
 		case data := <-serialRecv:
-			fmt.Printf("got: %q\n", data)
-		case line := <-commandSend:
-			serialSend <- []byte(line + "\r")
-			time.Sleep(100 * time.Millisecond)
+			pending = append(pending, data...)
+
+		case <-time.After(10 * time.Millisecond):
+			if !bytes.ContainsRune(pending, '\n') {
+				continue
+			}
+			lines := bytes.Split(pending, []byte{'\n'})
+			n := len(lines)
+			for i := 0; i < n-2; i++ {
+				fmt.Printf("unexpected: %q\n", lines[i])
+			}
+			last := lines[n-2]
+			if len(lines[n-1]) == 0 && bytes.HasPrefix(last, []byte(needle)) {
+				if needle + " ok." != string(last) {
+					fmt.Printf("extra: %q\n", last)
+				}
+				return
+			}
+			fmt.Printf("unexpected end: %q\n", last)
+			pending = lines[n-1]
+
+		case <-timeout:
+			fmt.Println("timed out")
+			return
 		}
 	}
 }
