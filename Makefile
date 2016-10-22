@@ -16,8 +16,8 @@ builds: version.go
 	@ GOOS=linux GOARCH=amd64 go build -o $@/folie-linux64
 	@ echo "  ARMv6 32-bit"
 	@ GOOS=linux GOARCH=arm GOARM=6 go build -o $@/folie-arm
-	@ echo "  ARMv8 64-bit"
-	@ GOOS=linux GOARCH=arm64 go build -o $@/folie-arm64
+#	@ echo "  ARMv8 64-bit"
+#	@ GOOS=linux GOARCH=arm64 go build -o $@/folie-arm64
 	@ echo "  FreeBSD 64-bit"
 	@ GOOS=freebsd GOARCH=amd64 go build -o $@/folie-freebsd64
 	@ gzip $@/folie-*
