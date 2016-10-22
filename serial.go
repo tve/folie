@@ -74,7 +74,7 @@ func SerialDispatch() {
 					fmt.Printf("[can't write: %s]\n", *port)
 				} else if _, err := tty.Write(out); err != nil {
 					fmt.Printf("[write error: %s]\n", *port)
-				} else {
+				} else if len(data) > 0 {
 					// when chunked, add a brief delay to force separate sends
 					time.Sleep(2 * time.Millisecond)
 				}
