@@ -60,12 +60,24 @@ func SerialConnect() {
 
 // SerialDispatch handles all incoming and outgoing serial data.
 func SerialDispatch() {
+	// outbound serial will be slowed down just a tad for Mecrisp/USB
 	go func() {
 		for data := range serialSend {
-			if tty != nil { // avoid write-while-closed panics
-				tty.Write(data)
-			} else {
-				fmt.Printf("[write error: %s]\n", *port)
+			for len(data) > 0 {
+				out := data
+				if len(out) > 60 {
+					out = out[:60] // send as separate chunks of under 64 bytes
+				}
+				data = data[len(out):]
+
+				if tty == nil { // avoid write-while-closed panics
+					fmt.Printf("[can't write: %s]\n", *port)
+				} else if _, err := tty.Write(out); err != nil {
+					fmt.Printf("[write error: %s]\n", *port)
+				} else {
+					// when chunked, add a brief delay to force separate sends
+					time.Sleep(2 * time.Millisecond)
+				}
 			}
 		}
 	}()
