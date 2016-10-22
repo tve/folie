@@ -152,7 +152,7 @@ func WrappedInclude(argv []string) {
 		return
 	}
 	if IncludeFile(argv[1]) {
-		fmt.Println("Done.")
+		fmt.Println("ok.")
 	}
 }
 

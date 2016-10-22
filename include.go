@@ -5,16 +5,27 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"path"
 	"strings"
 	"time"
 )
 
+var (
+	currFile string
+	currLine int
+)
+
 // IncludeFile sends out one file, expanding embdded includes as needed.
 func IncludeFile(name string) bool {
-	lineNum := 0
-	fmt.Printf("\\       >>> include %s\n", name)
+	prevFile := currFile
+	prevLine := currLine
+	currFile = path.Base(name)
+	currLine = 0
+	fmt.Printf("\\       >>> include %s\n", currFile)
 	defer func() {
-		fmt.Printf("\\       <<<<<<<<<<< %s (%d lines)\n", name, lineNum)
+		fmt.Printf("\\       <<<<<<<<<<< %s (%d lines)\n", currFile, currLine)
+		currFile = prevFile
+		currLine = prevLine
 	}()
 
 	f, err := os.Open(name)
@@ -27,7 +38,7 @@ func IncludeFile(name string) bool {
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := scanner.Text()
-		lineNum++
+		currLine++
 
 		s := strings.TrimLeft(line, " ")
 		if s == "" || s == "\\" || strings.HasPrefix(s, "\\ ") {
@@ -42,14 +53,16 @@ func IncludeFile(name string) bool {
 			}
 		} else {
 			serialSend <- []byte(line + "\r")
-			match(line + " ")
+			if !match(line) {
+				return false
+			}
 		}
 	}
 
 	return true
 }
 
-func match(needle string) {
+func match(expect string) bool {
 	timeout := time.After(3 * time.Second)
 
 	var pending []byte
@@ -63,24 +76,39 @@ func match(needle string) {
 			if !bytes.ContainsRune(pending, '\n') {
 				continue
 			}
+
 			lines := bytes.Split(pending, []byte{'\n'})
 			n := len(lines)
 			for i := 0; i < n-2; i++ {
-				fmt.Printf("unexpected: %q\n", lines[i])
+				fmt.Printf("%s, line %d: %s\n", currFile, currLine, lines[i])
 			}
-			last := lines[n-2]
-			if len(lines[n-1]) == 0 && bytes.HasPrefix(last, []byte(needle)) {
-				if needle + " ok." != string(last) {
-					fmt.Printf("extra: %q\n", last)
+
+			last := string(lines[n-2])
+			if len(lines[n-1]) == 0 && strings.HasPrefix(last, expect+" ") {
+				if expect+"  ok." != last {
+					fmt.Printf("%s, line %d: ", currFile, currLine)
+					if strings.HasSuffix(last, " not found.") {
+						fmt.Println(last[len(expect)+1:])
+						return false
+					}
+					if strings.HasPrefix(last, expect+" Redefine ") &&
+						strings.HasSuffix(last, "  ok.") {
+						fmt.Println(last[len(expect)+1:])
+					} else {
+						fmt.Println(last)
+					}
 				}
-				return
+				return true
 			}
-			fmt.Printf("unexpected end: %q\n", last)
+			fmt.Printf("%s, line %d: %s\n", currFile, currLine, last)
 			pending = lines[n-1]
 
 		case <-timeout:
-			fmt.Println("timed out")
-			return
+			if len(pending) == 0 {
+				return true
+			}
+			fmt.Printf("%s, line %d: %s\n", currFile, currLine, pending)
+			return string(pending) == expect+" "
 		}
 	}
 }
