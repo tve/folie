@@ -163,8 +163,8 @@ func WrappedSend(argv []string) {
 		fmt.Printf("Usage: %s <filename>\n", argv[0])
 		return
 	}
-	if SendFile(argv[1]) {
-		fmt.Println("ok.")
+	if !SendFile(argv[1]) {
+		fmt.Println("Send failed.")
 	}
 }
 

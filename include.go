@@ -88,8 +88,9 @@ func match(expect string) bool {
 				if last != expect+"  ok." {
 					tail := last[len(expect)+1:]
 					fmt.Printf("%s, line %d: %s\n", currFile, currLine, tail)
-					if strings.HasSuffix(last, " not found.") {
-						return false
+					if strings.HasSuffix(last, " not found.") ||
+						strings.HasSuffix(last, " Stack underflow") {
+						return false // no point in keeping going
 					}
 				}
 				return true
