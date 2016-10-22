@@ -156,10 +156,6 @@ func WrappedInclude(argv []string) {
 	}
 }
 
-func includeFile(name string) bool {
-	return true
-}
-
 func WrappedUpload(argv []string) {
 	if len(argv) == 1 {
 		fmt.Println("Built-in firmware images:")
