@@ -85,17 +85,11 @@ func match(expect string) bool {
 
 			last := string(lines[n-2])
 			if len(lines[n-1]) == 0 && strings.HasPrefix(last, expect+" ") {
-				if expect+"  ok." != last {
-					fmt.Printf("%s, line %d: ", currFile, currLine)
+				if last != expect+"  ok." {
+					tail := last[len(expect)+1:]
+					fmt.Printf("%s, line %d: %s\n", currFile, currLine, tail)
 					if strings.HasSuffix(last, " not found.") {
-						fmt.Println(last[len(expect)+1:])
 						return false
-					}
-					if strings.HasPrefix(last, expect+" Redefine ") &&
-						strings.HasSuffix(last, "  ok.") {
-						fmt.Println(last[len(expect)+1:])
-					} else {
-						fmt.Println(last)
 					}
 				}
 				return true
@@ -107,7 +101,7 @@ func match(expect string) bool {
 			if len(pending) == 0 {
 				return true
 			}
-			fmt.Printf("%s, line %d: %s\n", currFile, currLine, pending)
+			fmt.Printf("%s, line %d: %s ?\n", currFile, currLine, pending)
 			return string(pending) == expect+" "
 		}
 	}
