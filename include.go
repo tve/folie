@@ -102,7 +102,8 @@ func match(expect string) bool {
 			if len(pending) == 0 {
 				return true
 			}
-			fmt.Printf("%s, line %d: %s ?\n", currFile, currLine, pending)
+			fmt.Printf("%s, line %d: %s (timeout)\n",
+				currFile, currLine, pending)
 			return string(pending) == expect+" "
 		}
 	}
