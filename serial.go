@@ -141,7 +141,7 @@ func WrappedOpen(argv []string) {
 
 	fmt.Println("Select a serial port:")
 	for i, p := range ports {
-		fmt.Println("  ", i+1, "=", p)
+		fmt.Printf("%3d: %s\n", i+1, p)
 	}
 	reply := <-commandSend
 	fmt.Println(reply)
@@ -169,21 +169,23 @@ func WrappedSend(argv []string) {
 }
 
 func WrappedUpload(argv []string) {
+	names, _ := AssetDir("data")
+	sort.Strings(names)
+
 	if len(argv) == 1 {
 		fmt.Println("Built-in firmware images:")
-		names, _ := AssetDir("data")
-		sort.Strings(names)
-		for _, name := range names {
+		for i, name := range names {
 			info, _ := AssetInfo("data/" + name)
-			fmt.Printf("  %-15s %5db\n", name, info.Size())
+			fmt.Printf("%3d: %-15s %5db\n", i+1, name, info.Size())
 		}
 		return
 	}
 
-	// try built-in images first
-	data, err := Asset("data/" + argv[1])
-	if err != nil {
-		// else try opening the arg as file
+	// try built-in images first, indicated by entering a valid number
+	var data []byte
+	if n, err := strconv.Atoi(argv[1]); err == nil && 0 < n && n <= len(names) {
+		data, _ = Asset("data/" + names[n-1])
+	} else { // else try opening the arg as file
 		f, err := os.Open(argv[1])
 		if err != nil {
 			fmt.Println(err)
