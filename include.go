@@ -10,24 +10,10 @@ import (
 	"time"
 )
 
-var (
-	currFile string
-	currLine int
-)
+var callCount int
 
-// SendFile sends out one file, expanding embdded includes as needed.
-func SendFile(name string) bool {
-	prevFile := currFile
-	prevLine := currLine
-	currFile = path.Base(name)
-	currLine = 0
-	fmt.Printf("\\       >>> sending %s\n", currFile)
-	defer func() {
-		fmt.Printf("\\       <<<<<<<<<<< %s (%d lines)\n", currFile, currLine)
-		currFile = prevFile
-		currLine = prevLine
-	}()
-
+// IncludeFile sends out one file, expanding embdded includes as needed.
+func IncludeFile(name string, level int) bool {
 	f, err := os.Open(name)
 	if err != nil {
 		fmt.Println(err)
@@ -35,11 +21,25 @@ func SendFile(name string) bool {
 	}
 	defer f.Close()
 
+	currFile := path.Base(name)
+	currLine := 0
+	if level == 0 {
+		callCount = 0
+	}
+	callCount++
+	prefix := strings.Repeat(">", callCount)
+
+	lastMsg := ""
+	defer func() {
+		statusMsg(lastMsg, "")
+	}()
+
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
-		line := scanner.Text()
 		currLine++
+		lastMsg = statusMsg(lastMsg, "%s %s %d: ", prefix, currFile, currLine)
 
+		line := scanner.Text()
 		s := strings.TrimLeft(line, " ")
 		if s == "" || s == "\\" || strings.HasPrefix(s, "\\ ") {
 			continue // don't send empty or comment-only lines
@@ -47,7 +47,8 @@ func SendFile(name string) bool {
 
 		if strings.HasPrefix(line, "include ") {
 			for _, fname := range strings.Split(line[8:], " ") {
-				if !SendFile(fname) {
+				statusMsg(lastMsg, "")
+				if !IncludeFile(fname, level+1) {
 					return false
 				}
 			}
@@ -60,6 +61,15 @@ func SendFile(name string) bool {
 	}
 
 	return true
+}
+
+// statusMsg prints a formatted string and returns it. It takes the previous
+// string to be able to backspace over it before outputting the new message.
+func statusMsg(prev string, desc string, args ...interface{}) string {
+	fmt.Print(strings.Repeat("\b \b", len(prev)))
+	msg := fmt.Sprintf(desc, args...)
+	fmt.Print(msg)
+	return msg
 }
 
 func match(expect string) bool {
@@ -80,14 +90,14 @@ func match(expect string) bool {
 			lines := bytes.Split(pending, []byte{'\n'})
 			n := len(lines)
 			for i := 0; i < n-2; i++ {
-				fmt.Printf("%s, line %d: %s\n", currFile, currLine, lines[i])
+				fmt.Printf("%s\n", lines[i])
 			}
 
 			last := string(lines[n-2])
 			if len(lines[n-1]) == 0 && strings.HasPrefix(last, expect+" ") {
 				if last != expect+"  ok." {
 					tail := last[len(expect)+1:]
-					fmt.Printf("%s, line %d: %s\n", currFile, currLine, tail)
+					fmt.Printf("%s\n", tail)
 					if strings.HasSuffix(last, " not found.") ||
 						strings.HasSuffix(last, " Stack underflow") {
 						return false // no point in keeping going
@@ -95,15 +105,15 @@ func match(expect string) bool {
 				}
 				return true
 			}
-			fmt.Printf("%s, line %d: %s\n", currFile, currLine, last)
+			fmt.Printf("%s\n", last)
 			pending = lines[n-1]
 
 		case <-timeout:
 			if len(pending) == 0 {
 				return true
 			}
-			fmt.Printf("%s, line %d: %s (timeout)\n",
-				currFile, currLine, pending)
+			fmt.Printf("%s (timeout)\n",
+				pending)
 			return string(pending) == expect+" "
 		}
 	}
