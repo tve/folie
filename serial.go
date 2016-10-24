@@ -111,15 +111,19 @@ func SpecialCommand(line string) bool {
 
 		case "<open>":
 			// TODO can't be typed in to re-open, only usable on startup
-			WrappedOpen(cmd)
+			wrappedOpen(cmd)
+
+		case "!h", "!help":
+			fmt.Println(line)
+			showHelp()
 
 		case "!s", "!send":
 			fmt.Println(line)
-			WrappedSend(cmd)
+			wrappedSend(cmd)
 
 		case "!u", "!upload":
 			fmt.Println(line)
-			WrappedUpload(cmd)
+			wrappedUpload(cmd)
 
 		default:
 			return false
@@ -128,7 +132,22 @@ func SpecialCommand(line string) bool {
 	return true
 }
 
-func WrappedOpen(argv []string) {
+const helpMsg = `
+| To quit, hit ctrl-d or ctrl-c. For command history, use up-/down-arrow.
+| Special commands interpreted by folie, not sent to the serial port:
+|   !help           this message
+|   !send <file>    send text file to the serial port, expand "include" lines
+|   !upload         show the list is built-in firmware images
+|   !upload <n>     upload built-in image <n>
+|   !upload <file>  upload file (bin or hex format) using STM32 boot protocol
+| These can also be abbreviated as "!h", etc.
+`
+
+func showHelp() {
+	fmt.Println(helpMsg)
+}
+
+func wrappedOpen(argv []string) {
 	allPorts, err := serial.GetPortsList()
 	check(err)
 
@@ -139,12 +158,16 @@ func WrappedOpen(argv []string) {
 		}
 	}
 
-	fmt.Println("Select a serial port:")
+	fmt.Println("Select the serial port:")
 	for i, p := range ports {
 		fmt.Printf("%3d: %s\n", i+1, p)
 	}
+	console.SetPrompt("? ")
+	console.Refresh()
 	reply := <-commandSend
+	console.SetPrompt("")
 	fmt.Println(reply)
+	fmt.Println("Enter '!help' for additional help, or ctrc-d to quit.")
 
 	sel, _ := strconv.Atoi(reply)
 
@@ -158,7 +181,7 @@ func WrappedOpen(argv []string) {
 	openBlock <- ports[sel-1]
 }
 
-func WrappedSend(argv []string) {
+func wrappedSend(argv []string) {
 	if len(argv) == 1 {
 		fmt.Printf("Usage: %s <filename>\n", argv[0])
 		return
@@ -168,7 +191,7 @@ func WrappedSend(argv []string) {
 	}
 }
 
-func WrappedUpload(argv []string) {
+func wrappedUpload(argv []string) {
 	names, _ := AssetDir("data")
 	sort.Strings(names)
 
