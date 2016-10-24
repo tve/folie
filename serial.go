@@ -195,11 +195,12 @@ func wrappedUpload(argv []string) {
 	sort.Strings(names)
 
 	if len(argv) == 1 {
-		fmt.Println("Built-in firmware images:")
+		fmt.Println("These firmware images are built-in:")
 		for i, name := range names {
 			info, _ := AssetInfo("data/" + name)
 			fmt.Printf("%3d: %-15s %5db\n", i+1, name, info.Size())
 		}
+		fmt.Println("Use '!u <n>' to upload a specific one.")
 		return
 	}
 
