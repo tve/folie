@@ -138,8 +138,8 @@ const helpMsg = `
 |   !help           this message
 |   !send <file>    send text file to the serial port, expand "include" lines
 |   !upload         show the list is built-in firmware images
-|   !upload <n>     upload built-in image <n>
-|   !upload <file>  upload file (bin or hex format) using STM32 boot protocol
+|   !upload <n>     upload built-in image <n> using STM32 boot protocol
+|   !upload <file>  upload file (bin or hex format)
 | These can also be abbreviated as "!h", etc.
 `
 
