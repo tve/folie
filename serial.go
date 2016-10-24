@@ -185,7 +185,7 @@ func wrappedSend(argv []string) {
 		fmt.Printf("Usage: %s <filename>\n", argv[0])
 		return
 	}
-	if !SendFile(argv[1]) {
+	if !IncludeFile(argv[1], 0) {
 		fmt.Println("Send failed.")
 	}
 }

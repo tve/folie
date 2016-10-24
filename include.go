@@ -11,23 +11,25 @@ import (
 )
 
 var (
-	currFile string
-	currLine int
+	currFile  string
+	currLine  int
+	currCall int
 )
 
-// SendFile sends out one file, expanding embdded includes as needed.
-func SendFile(name string) bool {
-	prevFile := currFile
-	prevLine := currLine
-	currFile = path.Base(name)
-	currLine = 0
-	fmt.Printf("\\       >>> sending %s\n", currFile)
-	defer func() {
-		fmt.Printf("\\       <<<<<<<<<<< %s (%d lines)\n", currFile, currLine)
-		currFile = prevFile
-		currLine = prevLine
-	}()
+// Status prints a formatted string and also returns it. It takes the previous
+// string to be able to backspace over it before outputting the new message.
+func Status(prev string, desc string, args ...interface{}) string {
+	msg := fmt.Sprintf(desc, args...)
+	// clear previous message
+	for i := 0; i < len(prev); i++ {
+		fmt.Print("\b \b")
+	}
+	fmt.Print(msg)
+	return msg
+}
 
+// IncludeFile sends out one file, expanding embdded includes as needed.
+func IncludeFile(name string, level int) bool {
 	f, err := os.Open(name)
 	if err != nil {
 		fmt.Println(err)
@@ -35,11 +37,29 @@ func SendFile(name string) bool {
 	}
 	defer f.Close()
 
+	prevFile := currFile
+	prevLine := currLine
+	currFile = path.Base(name)
+	currLine = 0
+	if level == 0 {
+		currCall = 0
+	}
+	currCall++
+
+	lastMsg := ""
+	defer func() {
+		Status(lastMsg, "")
+		currFile = prevFile
+		currLine = prevLine
+	}()
+
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
-		line := scanner.Text()
 		currLine++
+		lastMsg = Status(lastMsg, "%s %s %d: ",
+			strings.Repeat(">", currCall), currFile, currLine)
 
+		line := scanner.Text()
 		s := strings.TrimLeft(line, " ")
 		if s == "" || s == "\\" || strings.HasPrefix(s, "\\ ") {
 			continue // don't send empty or comment-only lines
@@ -47,9 +67,11 @@ func SendFile(name string) bool {
 
 		if strings.HasPrefix(line, "include ") {
 			for _, fname := range strings.Split(line[8:], " ") {
-				if !SendFile(fname) {
+				Status(lastMsg, "")
+				if !IncludeFile(fname, level+1) {
 					return false
 				}
+				//Status(">", "")
 			}
 		} else {
 			serialSend <- []byte(line + "\r")
