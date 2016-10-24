@@ -105,7 +105,7 @@ func SerialDispatch() {
 
 // SpecialCommand recognises and handles certain commands in a different way.
 func SpecialCommand(line string) bool {
-	cmd := strings.Split(line, " ")
+	cmd := strings.SplitN(line, " ", 2)
 	if len(cmd) > 0 {
 		switch cmd[0] {
 
