@@ -41,7 +41,7 @@ func SerialConnect() {
 		tty = conn
 
 		// use readline's Stdout to force re-display of current input
-		fmt.Fprintf(console.Stdout(), "[connected: %s]\n", *port)
+		fmt.Fprintf(console.Stdout(), "[connected to %s]\n", *port)
 		for {
 			data := make([]byte, 250)
 			n, err := tty.Read(data)
@@ -71,9 +71,9 @@ func SerialDispatch() {
 				data = data[len(out):]
 
 				if tty == nil { // avoid write-while-closed panics
-					fmt.Printf("[can't write: %s]\n", *port)
+					fmt.Printf("[CAN'T WRITE! %s]\n", *port)
 				} else if _, err := tty.Write(out); err != nil {
-					fmt.Printf("[write error: %s]\n", *port)
+					fmt.Printf("[WRITE ERROR! %s]\n", *port)
 				} else if len(data) > 0 {
 					// when chunked, add a brief delay to force separate sends
 					time.Sleep(2 * time.Millisecond)
