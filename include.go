@@ -64,11 +64,13 @@ func IncludeFile(name string, level int) bool {
 }
 
 // statusMsg prints a formatted string and returns it. It takes the previous
-// string to be able to backspace over it before outputting the new message.
+// string to be able to clear it before outputting the new message.
 func statusMsg(prev string, desc string, args ...interface{}) string {
-	fmt.Print(strings.Repeat("\b \b", len(prev)))
 	msg := fmt.Sprintf(desc, args...)
-	fmt.Print(msg)
+	if len(msg) < len(prev) {
+		fmt.Print("\r", strings.Repeat(" ", len(prev)))
+	}
+	fmt.Print("\r", msg)
 	return msg
 }
 
