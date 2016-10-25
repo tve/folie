@@ -156,18 +156,27 @@ func wrappedOpen(argv []string) {
 			ports = append(ports, p)
 		}
 	}
+	//sort.Strings(ports)
 
-	fmt.Println("Select the serial port:")
-	for i, p := range ports {
-		fmt.Printf("%3d: %s\n", i+1, p)
+	if len(ports) == 0 {
+		done <- fmt.Errorf("No serial ports found.")
+		return
 	}
-	console.SetPrompt("? ")
-	console.Refresh()
-	reply := <-commandSend
-	console.SetPrompt("")
-	fmt.Println(reply)
 
-	sel, _ := strconv.Atoi(reply)
+	sel := 1
+	if len(ports) > 1 {
+		fmt.Println("Select the serial port:")
+		for i, p := range ports {
+			fmt.Printf("%3d: %s\n", i+1, p)
+		}
+		console.SetPrompt("? ")
+		console.Refresh()
+		reply := <-commandSend
+		console.SetPrompt("")
+		fmt.Println(reply)
+
+		sel, _ = strconv.Atoi(reply)
+	}
 
 	// quit on index errors, since we have no other useful choice!
 	defer func() {
