@@ -237,7 +237,7 @@ func wrappedUpload(argv []string) {
 	if n, err := strconv.Atoi(argv[1]); err == nil && 0 < n && n <= len(names) {
 		data, _ = Asset(names[n-1])
 	} else if _, err := url.Parse(argv[1]); err == nil {
-		fmt.Print("Fetching...")
+		fmt.Print("Fetching... ")
 		res, err := http.Get(argv[1])
 		if err == nil {
 			data, err = ioutil.ReadAll(res.Body)
@@ -247,6 +247,7 @@ func wrappedUpload(argv []string) {
 			fmt.Println(err)
 			return
 		}
+		fmt.Printf("got it, crc:%04X\n", crc16(data))
 	} else { // else try opening the arg as file
 		f, err := os.Open(argv[1])
 		if err != nil {
