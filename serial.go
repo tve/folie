@@ -166,7 +166,6 @@ func wrappedOpen(argv []string) {
 	reply := <-commandSend
 	console.SetPrompt("")
 	fmt.Println(reply)
-	fmt.Println("Enter '!help' for additional help, or ctrc-d to quit.")
 
 	sel, _ := strconv.Atoi(reply)
 
@@ -174,6 +173,8 @@ func wrappedOpen(argv []string) {
 	defer func() {
 		if e := recover(); e != nil {
 			done <- nil // forces quit without producing an error message
+		} else {
+			fmt.Println("Enter '!help' for additional help, or ctrc-d to quit.")
 		}
 	}()
 
