@@ -169,13 +169,13 @@ func wrappedOpen(argv []string) {
 
 	sel, _ := strconv.Atoi(reply)
 
-	// nasty way to quit on index errors, since there's no other useful option!
+	// quit on index errors, since we have no other useful choice!
 	defer func() {
 		if e := recover(); e != nil {
 			done <- nil // forces quit without producing an error message
-		} else {
-			fmt.Println("Enter '!help' for additional help, or ctrc-d to quit.")
+			return
 		}
+		fmt.Println("Enter '!help' for additional help, or ctrc-d to quit.")
 	}()
 
 	openBlock <- ports[sel-1]
@@ -206,16 +206,15 @@ func crc16(data []byte) uint16 {
 }
 
 func wrappedUpload(argv []string) {
-	names, _ := AssetDir("data")
+	names := AssetNames()
 	sort.Strings(names)
 
 	if len(argv) == 1 {
 		fmt.Println("These firmware images are built-in:")
 		for i, name := range names {
-			info, _ := AssetInfo("data/" + name)
-			data, _ := Asset("data/" + name)
+			data, _ := Asset(name)
 			fmt.Printf("%3d: %-16s %5db  crc:%04X\n",
-				i+1, name, info.Size(), crc16(data))
+				i+1, name, len(data), crc16(data))
 		}
 		fmt.Println("Use '!u <n>' to upload a specific one.")
 		return
@@ -224,7 +223,7 @@ func wrappedUpload(argv []string) {
 	// try built-in images first, indicated by entering a valid number
 	var data []byte
 	if n, err := strconv.Atoi(argv[1]); err == nil && 0 < n && n <= len(names) {
-		data, _ = Asset("data/" + names[n-1])
+		data, _ = Asset(names[n-1])
 	} else { // else try opening the arg as file
 		f, err := os.Open(argv[1])
 		if err != nil {
