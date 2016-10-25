@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
+	"net/url"
 	"os"
 	"sort"
 	"strconv"
@@ -139,6 +141,7 @@ Special commands interpreted by folie, can also be abbreviated as "!h", etc:
   !upload         show the list of built-in firmware images
   !upload <n>     upload built-in image <n> using STM32 boot protocol
   !upload <file>  upload specified firmware image (bin or hex format)
+  !upload <url>   fetch firmware image from given URL, then upload it
 To quit, hit ctrl-d or ctrl-c. For command history, use up-/down-arrow.
 `
 
@@ -233,6 +236,17 @@ func wrappedUpload(argv []string) {
 	var data []byte
 	if n, err := strconv.Atoi(argv[1]); err == nil && 0 < n && n <= len(names) {
 		data, _ = Asset(names[n-1])
+	} else if _, err := url.Parse(argv[1]); err == nil {
+		fmt.Print("Fetching...")
+		res, err := http.Get(argv[1])
+		if err == nil {
+			data, err = ioutil.ReadAll(res.Body)
+			res.Body.Close()
+		}
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 	} else { // else try opening the arg as file
 		f, err := os.Open(argv[1])
 		if err != nil {
