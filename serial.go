@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -18,10 +19,12 @@ import (
 )
 
 var (
-	port = flag.String("p", "", "serial port (COM*, /dev/cu.*, or /dev/tty*)")
-	baud = flag.Int("b", 115200, "serial baud rate")
+	port   = flag.String("p", "", "serial port (COM*, /dev/cu.*, or /dev/tty*)")
+	baud   = flag.Int("b", 115200, "serial baud rate")
+	telnet = flag.Bool("t", false, "use the telnet protocol")
 
-	tty       serial.Port
+	tty       serial.Port        // only used for serial connections
+	dev       io.ReadWriteCloser // used for both serial and tcp connections
 	openBlock = make(chan string)
 )
 
@@ -33,20 +36,30 @@ func SerialConnect() {
 	}
 
 	for {
-		conn, err := serial.Open(*port, &serial.Mode{
-			BaudRate: *baud,
-		})
+		var err error
+		if _, err = os.Stat(*port); os.IsNotExist(err) {
+			// if nonexistent, it's an ip addr + port, open it as network port
+			dev, err = net.Dial("tcp", *port)
+		} else {
+			tty, err = serial.Open(*port, &serial.Mode{
+				BaudRate: *baud,
+			})
+			dev = tty
+		}
 		if err != nil {
 			time.Sleep(100 * time.Millisecond)
 			continue
 		}
-		tty = conn
 
 		// use readline's Stdout to force re-display of current input
 		fmt.Fprintf(console.Stdout(), "[connected to %s]\n", *port)
+		if *telnet {
+			telnetEscape(11) // +RTS, keep BOOT0 low
+			telnetEscape(9)  // -DTR, keep RESET high
+		}
 		for {
 			data := make([]byte, 250)
-			n, err := tty.Read(data)
+			n, err := dev.Read(data)
 			if err == io.EOF || err == syscall.ENXIO {
 				break
 			}
@@ -55,7 +68,8 @@ func SerialConnect() {
 		}
 		fmt.Print("\n[disconnected] ")
 
-		tty.Close()
+		dev.Close()
+		dev = nil
 		tty = nil
 	}
 }
@@ -72,9 +86,9 @@ func SerialDispatch() {
 				}
 				data = data[len(out):]
 
-				if tty == nil { // avoid write-while-closed panics
+				if dev == nil { // avoid write-while-closed panics
 					fmt.Printf("[CAN'T WRITE! %s]\n", *port)
-				} else if _, err := tty.Write(out); err != nil {
+				} else if _, err := dev.Write(out); err != nil {
 					fmt.Printf("[WRITE ERROR! %s]\n", *port)
 				} else if len(data) > 0 {
 					// when chunked, add a brief delay to force separate sends
@@ -260,9 +274,11 @@ func wrappedUpload(argv []string) {
 		check(err)
 	}
 
-	// temporarily switch to even parity during upload
-	tty.SetMode(&serial.Mode{BaudRate: *baud, Parity: serial.EvenParity})
-	defer tty.SetMode(&serial.Mode{BaudRate: *baud})
+	if tty != nil && !*telnet {
+		// temporarily switch to even parity during upload
+		tty.SetMode(&serial.Mode{BaudRate: *baud, Parity: serial.EvenParity})
+		defer tty.SetMode(&serial.Mode{BaudRate: *baud})
+	}
 
 	Uploader(data)
 }

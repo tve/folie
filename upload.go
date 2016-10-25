@@ -26,10 +26,18 @@ var (
 	extended bool
 )
 
+const (
+	Iac  = 255
+	Will = 251
+	Sb   = 250
+	Se   = 240
+
+	ComPortOpt = 44
+	SetControl = 5
+)
+
 // Uploader implements the STM32 usart boot protocol to upload new firmware.
 func Uploader(data []byte) {
-	defer fmt.Println()
-
 	// convert to binary if first few bytes look like they are in "ihex" format
 	if len(data) > 11 && data[0] == ':' {
 		_, err := hex.DecodeString(string(data[1:11]))
@@ -38,11 +46,17 @@ func Uploader(data []byte) {
 		}
 	}
 	fmt.Printf("  %db ", len(data))
+	defer fmt.Println()
+
+	if *telnet {
+		telnetReset(true)        // reset with BOOT0 high to enter boot loader
+		defer telnetReset(false) // reset with BOOT0 low to restart normally
+	}
 
 	connectToTarget()
 
-	fmt.Printf("V%02x ", getBootVersion())
-	fmt.Printf("#%04x ", getChipType())
+	fmt.Printf("V%02X ", getBootVersion())
+	fmt.Printf("#%04X ", getChipType())
 
 	sendCmd(RDUNP_CMD)
 	wantAck(20)
@@ -80,11 +94,33 @@ func readWithTimeout(t time.Duration) []byte {
 	}
 }
 
+func telnetEscape(b uint8) {
+	if *verbose {
+		fmt.Printf("{esc:%02X}")
+	}
+	serialSend <- []byte{Iac, Sb, ComPortOpt, SetControl, b, Iac, Se}
+}
+
+func telnetReset(enterBoot bool) {
+	var b byte = 11 // +RTS
+	if enterBoot {
+		b = 12 // -RTS
+	}
+	telnetEscape(8) // +DTR
+	telnetEscape(b)
+	time.Sleep(10 * time.Millisecond)
+	telnetEscape(9) // -DTR
+}
+
 func sendByte(b uint8) {
 	if *verbose {
-		fmt.Printf(">%02x", b)
+		fmt.Printf(">%02X", b)
 	}
-	serialSend <- []byte{b}
+	if *telnet && b == Iac {
+		serialSend <- []byte{b, b}
+	} else {
+		serialSend <- []byte{b}
+	}
 	checkSum ^= b
 }
 
@@ -106,7 +142,7 @@ func getReply() uint8 {
 	if len(pending) > 0 {
 		b = pending[0]
 		if *verbose {
-			fmt.Printf("<%02x", b)
+			fmt.Printf("<%02X", b)
 		}
 		pending = pending[1:]
 	}
@@ -120,7 +156,7 @@ func wantAck(retries int) {
 		retries -= 1
 	}
 	if r != ACK {
-		fmt.Printf("\nFailed: %02x\n", r)
+		fmt.Printf("\nFailed: %02X\n", r)
 	}
 	checkSum = 0
 }
