@@ -67,10 +67,15 @@ func IncludeFile(name string, level int) bool {
 // string to be able to clear it before outputting the new message.
 func statusMsg(prev string, desc string, args ...interface{}) string {
 	msg := fmt.Sprintf(desc, args...)
-	if len(msg) < len(prev) {
-		fmt.Print("\r", strings.Repeat(" ", len(prev)))
+	n := len(msg)
+	if n > 3 && n == len(prev) && msg[:n-3] == prev[:n-3] {
+		fmt.Print("\b\b\b", msg[n-3:])	// optimise if only end changes
+	} else {
+		if len(msg) < len(prev) {
+			fmt.Print("\r", strings.Repeat(" ", len(prev)))
+		}
+		fmt.Print("\r", msg)
 	}
-	fmt.Print("\r", msg)
 	return msg
 }
 
