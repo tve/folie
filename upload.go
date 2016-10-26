@@ -134,7 +134,7 @@ func wantAck(retries int) {
 }
 
 func sendCmd(cmd uint8) {
-	readWithTimeout(10 * time.Millisecond)
+	readWithTimeout(50 * time.Millisecond)
 	pending = nil
 
 	sendByte(cmd)
