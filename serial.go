@@ -44,6 +44,7 @@ func SerialConnect() {
 			dev = tty
 		}
 		if err != nil {
+			fmt.Println(err)
 			time.Sleep(500 * time.Millisecond)
 			continue
 		}
