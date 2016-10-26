@@ -33,8 +33,8 @@ func SerialConnect() {
 	for {
 		tnState = 0 // clear telnet state before anything comes in
 
-		_, err := os.Stat(*port)
-		if os.IsNotExist(err) &&
+		var err error
+		if _, err = os.Stat(*port); os.IsNotExist(err) &&
 			strings.Contains(*port, ":") && !strings.HasSuffix(*port, ":") {
 			// if nonexistent, it's an ip addr + port, open it as network port
 			dev, err = net.Dial("tcp", *port)

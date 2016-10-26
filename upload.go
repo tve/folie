@@ -109,7 +109,11 @@ func send4bytes(v int) {
 func getReply() uint8 {
 	b := byte(0)
 	if len(pending) == 0 {
-		pending = readWithTimeout(3 * time.Second)
+		timeout := 100 * time.Millisecond
+		if tty == nil {
+			timeout = 3 * time.Second  // more patience for telnet, wifi, etc
+		}
+		pending = readWithTimeout(timeout)
 	}
 	if len(pending) > 0 {
 		b = pending[0]
