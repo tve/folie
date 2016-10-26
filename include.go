@@ -69,7 +69,7 @@ func statusMsg(prev string, desc string, args ...interface{}) string {
 	msg := fmt.Sprintf(desc, args...)
 	n := len(msg)
 	if n > 3 && n == len(prev) && msg[:n-3] == prev[:n-3] {
-		fmt.Print("\b\b\b", msg[n-3:])	// optimise if only end changes
+		fmt.Print("\b\b\b", msg[n-3:]) // optimise if only end changes
 	} else {
 		if len(msg) < len(prev) {
 			fmt.Print("\r", strings.Repeat(" ", len(prev)))
@@ -90,7 +90,7 @@ func match(expect string) bool {
 			pending = append(pending, data...)
 
 		case <-time.After(10 * time.Millisecond):
-			if !bytes.ContainsRune(pending, '\n') {
+			if !bytes.Contains(pending, []byte{'\n'}) {
 				continue
 			}
 
