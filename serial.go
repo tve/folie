@@ -141,6 +141,10 @@ func SpecialCommand(line string) bool {
 			fmt.Println(line)
 			wrappedLs(cmd)
 
+		case "!r", "!reset":
+			fmt.Println(line)
+			wrappedReset()
+
 		case "!s", "!send":
 			fmt.Println(line)
 			wrappedSend(cmd)
@@ -158,6 +162,7 @@ func SpecialCommand(line string) bool {
 
 const helpMsg = `
 Special commands, these can also be abbreviated as "!s", etc:
+  !reset          reset the board (only works in telnet mode)
   !send <file>    send text file to the serial port, expand "include" lines
   !upload         show the list of built-in firmware images
   !upload <n>     upload built-in image <n> using STM32 boot protocol

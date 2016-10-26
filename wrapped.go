@@ -46,6 +46,14 @@ func wrappedLs(argv []string) {
 	fmt.Println(strings.Join(names, " "))
 }
 
+func wrappedReset() {
+	if *telnet {
+		telnetReset(false)
+	} else {
+		fmt.Println("Reset only works in telnet mode (-t).")
+	}
+}
+
 func wrappedOpen(argv []string) {
 	allPorts, err := serial.GetPortsList()
 	check(err)
