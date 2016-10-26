@@ -19,6 +19,7 @@ var (
 
 	tty       serial.Port        // only used for serial connections
 	dev       io.ReadWriteCloser // used for both serial and tcp connections
+	tnState   int                // tracks telnet protocol state when reading
 	openBlock = make(chan string)
 )
 
@@ -30,6 +31,8 @@ func SerialConnect() {
 	}
 
 	for {
+		tnState = 0 // clear telnet state before anything comes in
+
 		var err error
 		if _, err = os.Stat(*port); os.IsNotExist(err) {
 			// if nonexistent, it's an ip addr + port, open it as network port
@@ -56,7 +59,9 @@ func SerialConnect() {
 			if err != nil {
 				break
 			}
-			check(err)
+			if *telnet {
+				n = telnetClean(data, n)
+			}
 			serialRecv <- data[:n]
 		}
 		fmt.Print("\n[disconnected] ")

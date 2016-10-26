@@ -21,9 +21,9 @@ const (
 )
 
 var (
-	checkSum byte
-	pending  []byte
-	extended bool
+	checkSum byte   // upload protocol checksum
+	pending  []byte // data received while waiting for line echo
+	extended bool   // flash erase uses extended mode
 )
 
 // Uploader implements the STM32 usart boot protocol to upload new firmware.
@@ -84,45 +84,6 @@ func readWithTimeout(t time.Duration) []byte {
 	}
 }
 
-const (
-	Iac  = 255
-	Will = 251
-	Sb   = 250
-	Se   = 240
-
-	ComPortOpt = 44
-	SetControl = 5
-
-	DTR_ON  = 8
-	DTR_OFF = 9
-	RTS_ON  = 11
-	RTS_OFF = 12
-)
-
-func telnetInit() {
-	serialSend <- []byte{Iac, Will, ComPortOpt}
-	telnetEscape(RTS_ON)  // keep BOOT0 low
-	telnetEscape(DTR_OFF) // keep RESET high
-}
-
-func telnetEscape(b uint8) {
-	if *verbose {
-		fmt.Printf("{esc:%02X}")
-	}
-	serialSend <- []byte{Iac, Sb, ComPortOpt, SetControl, b, Iac, Se}
-}
-
-func telnetReset(enterBoot bool) {
-	var b byte = RTS_ON
-	if enterBoot {
-		b = RTS_OFF
-	}
-	telnetEscape(DTR_ON)
-	telnetEscape(b)
-	time.Sleep(10 * time.Millisecond)
-	telnetEscape(DTR_OFF)
-}
-
 func sendByte(b uint8) {
 	if *verbose {
 		fmt.Printf(">%02X", b)
@@ -148,12 +109,12 @@ func send4bytes(v int) {
 func getReply() uint8 {
 	b := byte(0)
 	if len(pending) == 0 {
-		pending = readWithTimeout(time.Second)
+		pending = readWithTimeout(3 * time.Second)
 	}
 	if len(pending) > 0 {
 		b = pending[0]
 		if *verbose {
-			fmt.Printf("<%02X", b)
+			fmt.Printf("<%02X#%d", b, len(pending))
 		}
 		pending = pending[1:]
 	}
@@ -173,6 +134,9 @@ func wantAck(retries int) {
 }
 
 func sendCmd(cmd uint8) {
+	readWithTimeout(10 * time.Millisecond)
+	pending = nil
+
 	sendByte(cmd)
 	sendByte(^cmd)
 	pending = nil
