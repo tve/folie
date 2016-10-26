@@ -63,22 +63,19 @@ func wrappedOpen(argv []string) {
 		return
 	}
 
-	sel := 1
-	if len(ports) > 1 {
-		fmt.Println("Select the serial port:")
-		for i, p := range ports {
-			fmt.Printf("%3d: %s\n", i+1, p)
-		}
-		console.SetPrompt("? ")
-		console.Refresh()
-		reply := <-commandSend
-		console.SetPrompt("")
-		fmt.Println(reply)
-
-		sel, _ = strconv.Atoi(reply)
+	fmt.Println("Select the serial port:")
+	for i, p := range ports {
+		fmt.Printf("%3d: %s\n", i+1, p)
 	}
+	console.SetPrompt("? ")
+	console.Refresh()
+	reply := <-commandSend
+	console.SetPrompt("")
+	fmt.Println(reply)
 
-	// quit on index errors, since we have no other useful choice!
+	sel, _ := strconv.Atoi(reply)
+
+	// quit on index errors, since we have no other useful choice
 	defer func() {
 		if e := recover(); e != nil {
 			done <- nil // forces quit without producing an error message
