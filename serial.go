@@ -161,7 +161,7 @@ func SpecialCommand(line string) bool {
 }
 
 const helpMsg = `
-Special commands, these can also be abbreviated as "!s", etc:
+Special commands, these can also be abbreviated as "!r", etc:
   !reset          reset the board (only works in telnet mode)
   !send <file>    send text file to the serial port, expand "include" lines
   !upload         show the list of built-in firmware images
