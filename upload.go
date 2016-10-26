@@ -26,16 +26,6 @@ var (
 	extended bool
 )
 
-const (
-	Iac  = 255
-	Will = 251
-	Sb   = 250
-	Se   = 240
-
-	ComPortOpt = 44
-	SetControl = 5
-)
-
 // Uploader implements the STM32 usart boot protocol to upload new firmware.
 func Uploader(data []byte) {
 	// convert to binary if first few bytes look like they are in "ihex" format
@@ -94,6 +84,27 @@ func readWithTimeout(t time.Duration) []byte {
 	}
 }
 
+const (
+	Iac  = 255
+	Will = 251
+	Sb   = 250
+	Se   = 240
+
+	ComPortOpt = 44
+	SetControl = 5
+
+	DTR_ON  = 8
+	DTR_OFF = 9
+	RTS_ON  = 11
+	RTS_OFF = 12
+)
+
+func telnetInit() {
+	serialSend <- []byte{Iac, Will, ComPortOpt}
+	telnetEscape(RTS_ON)  // keep BOOT0 low
+	telnetEscape(DTR_OFF) // keep RESET high
+}
+
 func telnetEscape(b uint8) {
 	if *verbose {
 		fmt.Printf("{esc:%02X}")
@@ -102,14 +113,14 @@ func telnetEscape(b uint8) {
 }
 
 func telnetReset(enterBoot bool) {
-	var b byte = 11 // +RTS
+	var b byte = RTS_ON
 	if enterBoot {
-		b = 12 // -RTS
+		b = RTS_OFF
 	}
-	telnetEscape(8) // +DTR
+	telnetEscape(DTR_ON)
 	telnetEscape(b)
 	time.Sleep(10 * time.Millisecond)
-	telnetEscape(9) // -DTR
+	telnetEscape(DTR_OFF)
 }
 
 func sendByte(b uint8) {

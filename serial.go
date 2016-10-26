@@ -47,20 +47,19 @@ func SerialConnect() {
 			dev = tty
 		}
 		if err != nil {
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(500 * time.Millisecond)
 			continue
 		}
 
 		// use readline's Stdout to force re-display of current input
 		fmt.Fprintf(console.Stdout(), "[connected to %s]\n", *port)
 		if *telnet {
-			telnetEscape(11) // +RTS, keep BOOT0 low
-			telnetEscape(9)  // -DTR, keep RESET high
+			telnetInit()
 		}
 		for {
 			data := make([]byte, 250)
 			n, err := dev.Read(data)
-			if err == io.EOF || err == syscall.ENXIO {
+			if err != nil {
 				break
 			}
 			check(err)
@@ -264,14 +263,14 @@ func wrappedUpload(argv []string) {
 		fmt.Printf("got it, crc:%04X\n", crc16(data))
 	} else { // else try opening the arg as file
 		f, err := os.Open(argv[1])
+		if err == nil {
+			data, err = ioutil.ReadAll(f)
+			f.Close()
+		}
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
-		defer f.Close()
-
-		data, err = ioutil.ReadAll(f)
-		check(err)
 	}
 
 	if tty != nil && !*telnet {
