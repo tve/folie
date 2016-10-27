@@ -42,17 +42,17 @@ func telnetEscape(typ, val uint8) {
 }
 
 func telnetReset(enterBoot bool) {
+	time.Sleep(10 * time.Millisecond)
 	telnetEscape(SetControl, DTR_ON)
 	if enterBoot {
-		telnetEscape(SetParity, PAR_EVEN)
 		telnetEscape(SetControl, RTS_OFF)
+		telnetEscape(SetParity, PAR_EVEN)
 	} else {
-		telnetEscape(SetParity, PAR_NONE)
 		telnetEscape(SetControl, RTS_ON)
+		telnetEscape(SetParity, PAR_NONE)
 	}
 	time.Sleep(100 * time.Millisecond)
 	telnetEscape(SetControl, DTR_OFF)
-	time.Sleep(100 * time.Millisecond)
 }
 
 // telnetClean removes incoming telnet escape commands from the input buffer

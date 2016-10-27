@@ -109,7 +109,7 @@ func send4bytes(v int) {
 func getReply() uint8 {
 	b := byte(0)
 	if len(pending) == 0 {
-		timeout := 100 * time.Millisecond
+		timeout := 250 * time.Millisecond
 		if tty == nil {
 			timeout = 3 * time.Second  // more patience for telnet, wifi, etc
 		}
@@ -202,7 +202,7 @@ func massErase(pages int) {
 		sendByte(0xFF)
 		sendByte(0x00)
 	}
-	wantAck(4)
+	wantAck(10)
 }
 
 func writeFlash(data []byte) {
