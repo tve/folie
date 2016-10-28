@@ -4,10 +4,10 @@
 [![GoDoc](https://godoc.org/github.com/jeelabs/folie?status.svg)](http://godoc.org/github.com/jeelabs/folie)
 [![license](https://img.shields.io/github/license/jeelabs/folie.svg)]()
 
-The **Forth Live Explorer** is a command-line utility to communicate with a
-micro-controller via a serial port or a network connection. Its main mode of
-operation is as an interactive terminal, but it also knows how to upload code to
-an STM32 µC and is tailored in particular for use with [Mecrisp
+The **Forth Live Explorer** is a command-line utility to talk to a
+micro-controller via a (local or remote) serial port. Its main mode of operation
+is as interactive terminal, but it also knows how to upload code to an STM32 µC
+and is tailored in particular for use with [Mecrisp
 Forth](http://mecrisp.sourceforge.net/).
 
 This is experimental code, the stable version is at:
