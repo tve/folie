@@ -10,8 +10,7 @@ is as interactive terminal, but it can also upload code to an STM32 µC and is
 tailored in particular for use with [Mecrisp
 Forth](http://mecrisp.sourceforge.net/).
 
-This is experimental code, the stable version is at:
-
+This is experimental code, the stable version is at:  
 <https://github.com/jeelabs/embello/tree/master/tools/folie>
 
 ### Acknowledgments
