@@ -81,7 +81,7 @@ func statusMsg(prev string, desc string, args ...interface{}) string {
 }
 
 func match(expect string) bool {
-	timeout := time.After(3 * time.Second)
+	timer := time.NewTimer(3 * time.Second)
 
 	var pending []byte
 	for {
@@ -89,6 +89,10 @@ func match(expect string) bool {
 
 		case data := <-serialRecv:
 			pending = append(pending, data...)
+			if !timer.Stop() {
+				<-timer.C
+			}
+			timer.Reset(time.Second)
 
 		case <-time.After(10 * time.Millisecond):
 			if !bytes.Contains(pending, []byte{'\n'}) {
@@ -100,32 +104,44 @@ func match(expect string) bool {
 			for i := 0; i < n-2; i++ {
 				fmt.Printf("%s\n", lines[i])
 			}
+			lines = lines[n-2:]
 
-			last := string(lines[n-2])
-			if len(lines[n-1]) == 0 && strings.HasPrefix(last, expect+" ") {
-				if last != expect+"  ok." {
-					msg := last
-					// only show output if the source does not start with "("
-					if last[0] != '(' {
-						msg = last[len(expect)+1:]
+			last := string(lines[0])
+			if len(lines[1]) == 0 {
+				hasExpected := strings.HasPrefix(last, expect+" ")
+				if hasExpected || strings.HasSuffix(last, " ok.") {
+					if last != expect+"  ok." {
+						msg := last
+						// only show output if source does not end with ")"
+						// in that case, show just the comment from "(" on
+						if hasExpected {
+							msg = last[len(expect)+1:]
+							if strings.HasSuffix(expect, ")") {
+								if n := strings.LastIndex(expect, "("); n > 0 {
+									msg = last[n:]
+								}
+							}
+						}
+						fmt.Printf("%s\n", msg)
+						if strings.HasSuffix(last, " not found.") ||
+							strings.HasSuffix(last, " Stack underflow") ||
+							strings.HasSuffix(last, " Jump too far") {
+							return false // no point in keeping going
+						}
 					}
-					fmt.Printf("%s\n", msg)
-					if strings.HasSuffix(last, " not found.") ||
-						strings.HasSuffix(last, " Stack underflow") {
-						return false // no point in keeping going
-					}
+					return true
 				}
-				return true
+			} else {
+				fmt.Printf("TAIL? %#v\n", lines[1])
 			}
 			fmt.Printf("%s\n", last)
-			pending = lines[n-1]
+			pending = lines[1]
 
-		case <-timeout:
+		case <-timer.C:
 			if len(pending) == 0 {
 				return true
 			}
-			fmt.Printf("%s (timeout)\n",
-				pending)
+			fmt.Printf("%s (timeout)\n", pending)
 			return string(pending) == expect+" "
 		}
 	}
