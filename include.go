@@ -131,8 +131,6 @@ func match(expect string) bool {
 					}
 					return true
 				}
-			} else {
-				fmt.Printf("TAIL? %#v\n", lines[1])
 			}
 			fmt.Printf("%s\n", last)
 			pending = lines[1]
