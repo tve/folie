@@ -112,13 +112,13 @@ func match(expect string) bool {
 				if hasExpected || strings.HasSuffix(last, " ok.") {
 					if last != expect+"  ok." {
 						msg := last
-						// only show output if source does not end with ")"
-						// in that case, show just the comment from "(" on
+						// only show output if source does not start with "("
+						// ... in that case, show just the comment up to ")"
 						if hasExpected {
 							msg = last[len(expect)+1:]
-							if strings.HasSuffix(expect, ")") {
-								if n := strings.LastIndex(expect, "("); n > 0 {
-									msg = last[n:]
+							if last[0] == '(' {
+								if n := strings.Index(expect, ")"); n > 0 {
+									msg = last[:n+1] + last[len(expect):]
 								}
 							}
 						}
