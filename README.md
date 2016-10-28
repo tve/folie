@@ -6,8 +6,8 @@
 
 The **Forth Live Explorer** is a command-line utility to talk to a
 micro-controller via a (local or remote) serial port. Its main mode of operation
-is as interactive terminal, but it also knows how to upload code to an STM32 µC
-and is tailored in particular for use with [Mecrisp
+is as interactive terminal, but it can also upload code to an STM32 µC and is
+tailored in particular for use with [Mecrisp
 Forth](http://mecrisp.sourceforge.net/).
 
 This is experimental code, the stable version is at:
