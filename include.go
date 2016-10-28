@@ -68,7 +68,8 @@ func IncludeFile(name string, level int) bool {
 func statusMsg(prev string, desc string, args ...interface{}) string {
 	msg := fmt.Sprintf(desc, args...)
 	n := len(msg)
-	if n > 3 && n == len(prev) && msg[:n-3] == prev[:n-3] {
+	// FIXME this optimisation is incorrect, it sometimes eats up first 3 chars
+	if false && n > 3 && n == len(prev) && msg[:n-3] == prev[:n-3] {
 		fmt.Print("\b\b\b", msg[n-3:]) // optimise if only end changes
 	} else {
 		if len(msg) < len(prev) {
