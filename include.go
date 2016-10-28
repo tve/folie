@@ -104,8 +104,12 @@ func match(expect string) bool {
 			last := string(lines[n-2])
 			if len(lines[n-1]) == 0 && strings.HasPrefix(last, expect+" ") {
 				if last != expect+"  ok." {
-					tail := last[len(expect)+1:]
-					fmt.Printf("%s\n", tail)
+					msg := last
+					// only show output if the source does not start with "("
+					if last[0] != '(' {
+						msg = last[len(expect)+1:]
+					}
+					fmt.Printf("%s\n", msg)
 					if strings.HasSuffix(last, " not found.") ||
 						strings.HasSuffix(last, " Stack underflow") {
 						return false // no point in keeping going
