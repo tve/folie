@@ -123,9 +123,7 @@ func match(expect string) bool {
 							}
 						}
 						fmt.Printf("%s\n", msg)
-						if strings.HasSuffix(last, " not found.") ||
-							strings.HasSuffix(last, " Stack underflow") ||
-							strings.HasSuffix(last, " Jump too far") {
+						if hasFatalError(last) {
 							return false // no point in keeping going
 						}
 					}
@@ -143,4 +141,23 @@ func match(expect string) bool {
 			return string(pending) == expect+" "
 		}
 	}
+}
+
+func hasFatalError(s string) bool {
+	for _, match := range []string {
+		" not found.",
+		" is compile-only.",
+		" Stack not balanced.",
+		" Stack underflow",
+		" Stack overflow",
+		" Flash full",
+		" Ram full",
+		" Structures don't match",
+		" Jump too far",
+	} {
+		if strings.HasSuffix(s, match) {
+			return true
+		}
+	}
+	return false
 }
