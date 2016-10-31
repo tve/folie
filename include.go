@@ -94,6 +94,9 @@ func match(expect string) bool {
 			}
 			timer.Reset(time.Second)
 
+		case <-commandSend:
+			return false  // abort include
+
 		case <-time.After(10 * time.Millisecond):
 			if !bytes.Contains(pending, []byte{'\n'}) {
 				continue
@@ -144,7 +147,7 @@ func match(expect string) bool {
 }
 
 func hasFatalError(s string) bool {
-	for _, match := range []string {
+	for _, match := range []string{
 		" not found.",
 		" is compile-only.",
 		" Stack not balanced.",
