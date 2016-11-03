@@ -27,7 +27,7 @@ func IncludeFile(name string, level int) bool {
 		callCount = 0
 	}
 	callCount++
-	prefix := strings.Repeat(">", callCount)
+	prefix := fmt.Sprintf("%d>", callCount)
 
 	lastMsg := ""
 	defer func() {
@@ -95,7 +95,7 @@ func match(expect string) bool {
 			timer.Reset(time.Second)
 
 		case <-commandSend:
-			return false  // abort include
+			return false // abort include
 
 		case <-time.After(10 * time.Millisecond):
 			if !bytes.Contains(pending, []byte{'\n'}) {
