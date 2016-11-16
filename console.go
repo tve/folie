@@ -30,9 +30,11 @@ func ConsoleTask() {
 
 	for {
 		line, err := console.Readline()
-		if err != nil {
+		if err == readline.ErrInterrupt {
+			line = "!reset"
+		} else if err != nil {
 			close(done)
-			return
+			break
 		}
 		commandSend <- line
 	}
