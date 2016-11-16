@@ -162,7 +162,7 @@ func SpecialCommand(line string) bool {
 
 const helpMsg = `
 Special commands, these can also be abbreviated as "!r", etc:
-  !reset          reset the board (only works in telnet mode)
+  !reset          reset the board, same as ctcl-c (only works in telnet mode)
   !send <file>    send text file to the serial port, expand "include" lines
   !upload         show the list of built-in firmware images
   !upload <n>     upload built-in image <n> using STM32 boot protocol
@@ -172,7 +172,7 @@ Utility commands:
   !cd <dir>       change directory (or list current one if not specified)
   !ls <dir>       list contents of the specified (or current) directory
   !help           this message
-To quit, hit ctrl-d or ctrl-c. For command history, use up-/down-arrow.
+To quit, hit ctrl-d. For command history, use up-/down-arrow.
 `
 
 func showHelp() {
