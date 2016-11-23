@@ -13,9 +13,9 @@ import (
 )
 
 var (
-	port   = flag.String("p", "", "serial port (COM*, /dev/cu.*, or /dev/tty*)")
-	baud   = flag.Int("b", 115200, "serial baud rate")
-	telnet = flag.Bool("t", false, "use the telnet protocol")
+	port = flag.String("p", "", "serial port (COM*, /dev/cu.*, or /dev/tty*)")
+	baud = flag.Int("b", 115200, "serial baud rate")
+	raw  = flag.Bool("r", false, "use raw instead of telnet protocol")
 
 	tty       serial.Port        // only used for serial connections
 	dev       io.ReadWriteCloser // used for both serial and tcp connections
@@ -52,7 +52,7 @@ func SerialConnect() {
 
 		// use readline's Stdout to force re-display of current input
 		fmt.Fprintf(console.Stdout(), "[connected to %s]\n", *port)
-		if *telnet {
+		if !*raw {
 			telnetInit()
 		}
 		for {
@@ -61,7 +61,7 @@ func SerialConnect() {
 			if err != nil {
 				break
 			}
-			if *telnet {
+			if !*raw {
 				n = telnetClean(data, n)
 			}
 			serialRecv <- data[:n]

@@ -15,10 +15,14 @@ This is experimental code, the stable version is at:
 
 ### Acknowledgments
 
-* [Go](https://golang.org/) - a programming language which gets types,
-  concurrency, builds, **and** deployment right (BSD)
-* [go-serial](https://github.com/bugst/go-serial) - knows about serial ports
-  across all platforms - by [Christian Maglie](https://github.com/cmaglie) (BSD)
-* [readline](https://github.com/chzyer/readline) - takes care of local line
-  editing and history - by [@chzyer](https://github.com/chzyer) (MIT)
+* [Mecrisp Forth](http://mecrisp.sourceforge.net) by Matthias Koch (GPL3) - the
+  reason Folie exists
+* [Go](https://golang.org/) (BSD) - the language which gets types, concurrency,
+  builds, **and** deployment right
+* [go-serial](https://github.com/bugst/go-serial) by [Christian
+  Maglie](https://github.com/cmaglie) (BSD) - knows about serial ports across
+  all platforms
+* [readline](https://github.com/chzyer/readline) by
+  [@chzyer](https://github.com/chzyer) (MIT) - takes care of local line editing
+  and history
 * the JeeLabs chat group - _you know who you are..._

@@ -38,7 +38,7 @@ func Uploader(data []byte) {
 	fmt.Printf("  %db ", len(data))
 	defer fmt.Println()
 
-	if *telnet {
+	if !*raw {
 		telnetReset(true)        // reset with BOOT0 high to enter boot loader
 		defer telnetReset(false) // reset with BOOT0 low to restart normally
 	}
@@ -88,7 +88,7 @@ func sendByte(b uint8) {
 	if *verbose {
 		fmt.Printf(">%02X", b)
 	}
-	if *telnet && b == Iac {
+	if !*raw && b == Iac {
 		serialSend <- []byte{b, b}
 	} else {
 		serialSend <- []byte{b}
@@ -111,7 +111,7 @@ func getReply() uint8 {
 	if len(pending) == 0 {
 		timeout := 250 * time.Millisecond
 		if tty == nil {
-			timeout = 3 * time.Second  // more patience for telnet, wifi, etc
+			timeout = 3 * time.Second // more patience for telnet, wifi, etc
 		}
 		pending = readWithTimeout(timeout)
 	}

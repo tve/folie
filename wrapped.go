@@ -47,7 +47,7 @@ func wrappedLs(argv []string) {
 }
 
 func wrappedReset() {
-	if *telnet {
+	if !*raw {
 		telnetReset(false)
 	} else {
 		fmt.Println("Reset only works in telnet mode (-t).")
@@ -162,7 +162,7 @@ func wrappedUpload(argv []string) {
 		}
 	}
 
-	if tty != nil && !*telnet {
+	if tty != nil && *raw {
 		// temporarily switch to even parity during upload
 		tty.SetMode(&serial.Mode{BaudRate: *baud, Parity: serial.EvenParity})
 		defer tty.SetMode(&serial.Mode{BaudRate: *baud})
