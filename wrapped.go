@@ -50,7 +50,7 @@ func wrappedReset() {
 	if !*raw {
 		telnetReset(false)
 	} else {
-		fmt.Println("Reset only works in telnet mode (-t).")
+		fmt.Println("Reset does not work in raw mode (-r).")
 	}
 }
 
