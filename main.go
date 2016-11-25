@@ -25,6 +25,7 @@ func main() {
 	}
 
 	go ConsoleTask()
+	go SerialDispatch()
 
 	if err, ok := <-done; ok {
 		if err != nil {
