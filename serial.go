@@ -30,6 +30,8 @@ func SerialConnect() {
 		*port = <-openBlock
 	}
 
+	go SerialDispatch()
+
 	for {
 		tnState = 0 // clear telnet state before anything comes in
 

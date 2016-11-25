@@ -28,6 +28,8 @@ func ConsoleTask() {
 	console, err = readline.NewEx(&config)
 	check(err)
 
+	go SerialConnect()
+
 	for {
 		line, err := console.Readline()
 		if err == readline.ErrInterrupt {
