@@ -23,6 +23,34 @@ var (
 	openBlock = make(chan string)
 )
 
+func blockUntilOpen() {
+	for {
+		var err error
+		if _, err = os.Stat(*port); os.IsNotExist(err) &&
+			strings.Count(*port, ":") == 1 && !strings.HasSuffix(*port, ":") {
+			// if nonexistent, it's an ip addr + port, open it as network port
+			dev, err = net.Dial("tcp", *port)
+		} else {
+			tty, err = serial.Open(*port, &serial.Mode{
+				BaudRate: *baud,
+			})
+			dev = tty
+		}
+		if err == nil {
+			break
+		}
+		fmt.Println(err)
+		time.Sleep(500 * time.Millisecond)
+	}
+
+	// use readline's Stdout to force re-display of current input
+	fmt.Fprintf(console.Stdout(), "[connected to %s]\n", *port)
+
+	if !*raw {
+		telnetInit()
+	}
+}
+
 // SerialConnect opens and re-opens a serial port and feeds the receive channel.
 func SerialConnect() {
 	if *port == "" {
@@ -33,28 +61,8 @@ func SerialConnect() {
 	for {
 		tnState = 0 // clear telnet state before anything comes in
 
-		var err error
-		if _, err = os.Stat(*port); os.IsNotExist(err) &&
-			strings.Contains(*port, ":") && !strings.HasSuffix(*port, ":") {
-			// if nonexistent, it's an ip addr + port, open it as network port
-			dev, err = net.Dial("tcp", *port)
-		} else {
-			tty, err = serial.Open(*port, &serial.Mode{
-				BaudRate: *baud,
-			})
-			dev = tty
-		}
-		if err != nil {
-			fmt.Println(err)
-			time.Sleep(500 * time.Millisecond)
-			continue
-		}
+		blockUntilOpen()
 
-		// use readline's Stdout to force re-display of current input
-		fmt.Fprintf(console.Stdout(), "[connected to %s]\n", *port)
-		if !*raw {
-			telnetInit()
-		}
 		for {
 			data := make([]byte, 250)
 			n, err := dev.Read(data)
@@ -88,8 +96,11 @@ func SerialDispatch() {
 
 				if dev == nil { // avoid write-while-closed panics
 					fmt.Printf("[CAN'T WRITE! %s]\n", *port)
+					blockUntilOpen()
 				} else if _, err := dev.Write(out); err != nil {
 					fmt.Printf("[WRITE ERROR! %s]\n", *port)
+					dev.Close()
+					blockUntilOpen()
 				} else if len(data) > 0 {
 					// when chunked, add a brief delay to force separate sends
 					time.Sleep(2 * time.Millisecond)
