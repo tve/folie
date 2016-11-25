@@ -138,7 +138,7 @@ func wrappedUpload(argv []string) {
 	var data []byte
 	if n, err := strconv.Atoi(argv[1]); err == nil && 0 < n && n <= len(names) {
 		data, _ = Asset(names[n-1])
-	} else if _, err := url.Parse(argv[1]); err == nil {
+	} else if u, err := url.Parse(argv[1]); err == nil && u.Scheme != "" {
 		fmt.Print("Fetching... ")
 		res, err := http.Get(argv[1])
 		if err == nil {
