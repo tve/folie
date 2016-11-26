@@ -38,10 +38,8 @@ func Uploader(data []byte) {
 	fmt.Printf("  %db ", len(data))
 	defer fmt.Println()
 
-	if !*raw {
-		telnetReset(true)        // reset with BOOT0 high to enter boot loader
-		defer telnetReset(false) // reset with BOOT0 low to restart normally
-	}
+	boardReset(true)        // reset with BOOT0 high to enter boot loader
+	defer boardReset(false) // reset with BOOT0 low to restart normally
 
 	connectToTarget()
 

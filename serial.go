@@ -23,6 +23,18 @@ var (
 	openBlock = make(chan string)
 )
 
+func boardReset(enterBoot bool) {
+	if !*raw {
+		telnetReset(enterBoot)
+	} else if tty != nil {
+		time.Sleep(10 * time.Millisecond)
+		tty.SetDTR(true)
+		tty.SetRTS(!enterBoot)
+		time.Sleep(100 * time.Millisecond)
+		tty.SetDTR(false)
+	}
+}
+
 func blockUntilOpen() {
 	for {
 		var err error
@@ -46,7 +58,9 @@ func blockUntilOpen() {
 	// use readline's Stdout to force re-display of current input
 	fmt.Fprintf(console.Stdout(), "[connected to %s]\n", *port)
 
-	if !*raw {
+	if *raw {
+		boardReset(false)
+	} else {
 		telnetInit()
 	}
 }
@@ -173,7 +187,7 @@ func SpecialCommand(line string) bool {
 
 const helpMsg = `
 Special commands, these can also be abbreviated as "!r", etc:
-  !reset          reset the board, same as ctcl-c (ignored in raw mode)
+  !reset          reset the board, same as ctcl-c
   !send <file>    send text file to the serial port, expand "include" lines
   !upload         show the list of built-in firmware images
   !upload <n>     upload built-in image <n> using STM32 boot protocol

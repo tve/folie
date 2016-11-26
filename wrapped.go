@@ -47,11 +47,7 @@ func wrappedLs(argv []string) {
 }
 
 func wrappedReset() {
-	if !*raw {
-		telnetReset(false)
-	} else {
-		fmt.Println("Reset does not work in raw mode (-r).")
-	}
+	boardReset(false)
 }
 
 func wrappedOpen(argv []string) {
