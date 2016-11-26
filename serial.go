@@ -36,6 +36,7 @@ func boardReset(enterBoot bool) {
 }
 
 func blockUntilOpen() {
+	var lastErr error
 	for {
 		var err error
 		if _, err = os.Stat(*port); os.IsNotExist(err) &&
@@ -51,7 +52,10 @@ func blockUntilOpen() {
 		if err == nil {
 			break
 		}
-		fmt.Println(err)
+		if err != lastErr {
+			fmt.Println(err)
+			lastErr = err
+		}
 		time.Sleep(500 * time.Millisecond)
 	}
 
