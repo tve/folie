@@ -38,9 +38,6 @@ func Uploader(data []byte) {
 	fmt.Printf("  %db ", len(data))
 	defer fmt.Println()
 
-	boardReset(true)        // reset with BOOT0 high to enter boot loader
-	defer boardReset(false) // reset with BOOT0 low to restart normally
-
 	connectToTarget()
 
 	fmt.Printf("V%02X ", getBootVersion())

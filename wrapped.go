@@ -164,5 +164,8 @@ func wrappedUpload(argv []string) {
 		defer tty.SetMode(&serial.Mode{BaudRate: *baud})
 	}
 
+	boardReset(true)        // reset with BOOT0 high to enter boot loader
+	defer boardReset(false) // reset with BOOT0 low to restart normally
+
 	Uploader(data)
 }
