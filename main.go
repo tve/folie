@@ -1,6 +1,6 @@
 package main
 
-//go:generate go-bindata -prefix data/ data/
+//go:generate go-bindata -prefix files/ files/
 
 import (
 	"flag"
