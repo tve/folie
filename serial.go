@@ -27,10 +27,10 @@ func boardReset(enterBoot bool) {
 	if !*raw {
 		telnetReset(enterBoot)
 	} else if tty != nil {
-		time.Sleep(10 * time.Millisecond)
 		tty.SetDTR(true)
+		time.Sleep(10 * time.Millisecond)
 		tty.SetRTS(!enterBoot)
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(10 * time.Millisecond)
 		tty.SetDTR(false)
 	}
 }
