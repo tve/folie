@@ -25,7 +25,7 @@ builds: version.go
 
 version.go:
 	@ echo "VERSION = `git describe --tags`"
-	@ sed -i '' "s/VERSION.*/VERSION = \"`git describe --tags`\"/" $@
+	@ sed -i "s/VERSION.*/VERSION = \"`git describe --tags`\"/" $@
 
 clean:
 	rm -rf folie folie.exe builds
