@@ -42,7 +42,6 @@ func telnetEscape(typ, val uint8) {
 }
 
 func telnetReset(enterBoot bool) {
-	time.Sleep(10 * time.Millisecond)
 	telnetEscape(SetControl, DTR_ON)
 	if enterBoot {
 		telnetEscape(SetControl, RTS_OFF)
@@ -51,7 +50,7 @@ func telnetReset(enterBoot bool) {
 		telnetEscape(SetControl, RTS_ON)
 		telnetEscape(SetParity, PAR_NONE)
 	}
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(250 * time.Millisecond)
 	telnetEscape(SetControl, DTR_OFF)
 }
 
