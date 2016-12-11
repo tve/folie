@@ -108,7 +108,7 @@ var crcTable = []uint16{
 
 func crc16(data []byte) uint16 {
 	var crc uint16 = 0xFFFF
-	for b := range data {
+	for _, b := range data {
 		crc = (crc >> 4) ^ crcTable[crc&0x0F] ^ crcTable[b&0x0F]
 		crc = (crc >> 4) ^ crcTable[crc&0x0F] ^ crcTable[(b>>4)&0x0F]
 	}
