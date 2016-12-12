@@ -46,7 +46,7 @@ func IncludeFile(name string, level int) bool {
 		}
 
 		if strings.HasPrefix(line, "include ") {
-			for _, fname := range strings.Split(line[8:], " ") {
+			for _, fname := range strings.Fields(line)[1:] {
 				statusMsg(lastMsg, "")
 				if !IncludeFile(fname, level+1) {
 					return false
