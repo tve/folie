@@ -192,7 +192,7 @@ func SpecialCommand(line string) bool {
 
 const helpMsg = `
 Special commands, these can also be abbreviated as "!r", etc:
-  !reset          reset the board, same as ctcl-c
+  !reset          reset the board, same as ctrl-c
   !send <file>    send text file to the serial port, expand "include" lines
   !upload         show the list of built-in firmware images
   !upload <n>     upload built-in image <n> using STM32 boot protocol
