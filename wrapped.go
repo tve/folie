@@ -85,7 +85,7 @@ func wrappedOpen(argv []string) {
 			done <- nil // forces quit without producing an error message
 			return
 		}
-		fmt.Println("Enter '!help' for additional help, or ctrc-d to quit.")
+		fmt.Println("Enter '!help' for additional help, or ctrl-d to quit.")
 	}()
 
 	openBlock <- ports[sel-1]
