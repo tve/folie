@@ -72,20 +72,18 @@ func telnetClean(buf []byte, n int) int {
 		case 1: // seen Iac
 			if b == Sb {
 				tnState = 2
+			} else if b >= Will {
+				tnState = 3
 			} else {
 				j++
 				tnState = 0
 			}
 		case 2: // inside command
-			if b == Iac {
-				tnState = 3
-			}
-		case 3: // inside command, see Iac
 			if b == Se {
 				tnState = 0
-			} else {
-				tnState = 2
 			}
+		case 3: // Will/Wont/Do/Dont seen
+			tnState = 0
 		}
 	}
 	return j
