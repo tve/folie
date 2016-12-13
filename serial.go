@@ -91,7 +91,9 @@ func SerialConnect() {
 			if !*raw {
 				n = telnetClean(data, n)
 			}
-			serialRecv <- data[:n]
+			if n > 0 {
+				serialRecv <- data[:n]
+			}
 		}
 		fmt.Print("\n[disconnected] ")
 
