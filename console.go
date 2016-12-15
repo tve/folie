@@ -23,7 +23,6 @@ func ConsoleTask() {
 	var err error
 	config := readline.Config{
 		UniqueEditLine: true,
-		Stdout:         os.Stdout,
 	}
 	console, err = readline.NewEx(&config)
 	check(err)
