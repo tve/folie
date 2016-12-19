@@ -8,6 +8,8 @@ builds: version.go
 	@ echo Re-building binaries:
 	@ echo "  MacOSX 64-bit"
 	@ GOOS=darwin GOARCH=amd64 go build -o $@/folie-macos64
+	@ echo "  Windows 32-bit"
+	@ GOOS=windows GOARCH=386 go build -o $@/folie-windows
 	@ echo "  Windows 64-bit"
 	@ GOOS=windows GOARCH=amd64 go build -o $@/folie-windows64
 	@ echo "  Linux 32-bit"
