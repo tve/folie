@@ -17,9 +17,9 @@ var (
 	baud = flag.Int("b", 115200, "serial baud rate")
 	raw  = flag.Bool("r", false, "use raw instead of telnet protocol")
 
-	tty       serial.Port        // only used for serial connections
-	dev       io.ReadWriteCloser // used for both serial and tcp connections
-	tnState   int                // tracks telnet protocol state when reading
+	tty     serial.Port        // only used for serial connections
+	dev     io.ReadWriteCloser // used for both serial and tcp connections
+	tnState int                // tracks telnet protocol state when reading
 )
 
 func boardReset(enterBoot bool) {
@@ -62,11 +62,10 @@ func blockUntilOpen() {
 	// use readline's Stdout to force re-display of current input
 	fmt.Fprintf(console.Stdout(), "[connected to %s]\n", *port)
 
-	if *raw {
-		boardReset(false)
-	} else {
+	if !*raw {
 		telnetInit()
 	}
+	boardReset(false)
 }
 
 // SerialConnect opens and re-opens a serial port and feeds the receive channel.
