@@ -47,7 +47,11 @@ func wrappedLs(argv []string) {
 }
 
 func wrappedReset() {
-	boardReset(false)
+	if dev == nil {
+		fmt.Println("[use CTRL-D to exit]")
+	} else {
+		boardReset(false)
+	}
 }
 
 func wrappedOpen(argv []string) {
