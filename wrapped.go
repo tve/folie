@@ -55,12 +55,6 @@ func wrappedReset() {
 }
 
 func wrappedOpen(argv []string) {
-	if dev != nil {
-		dev.Close()
-	}
-	dev = nil
-	tty = nil
-
 	allPorts, err := serial.GetPortsList()
 	check(err)
 
