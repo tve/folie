@@ -88,7 +88,7 @@ func wrappedOpen(argv []string) {
 		fmt.Println("Enter '!help' for additional help, or ctrl-d to quit.")
 	}()
 
-	openBlock <- ports[sel-1]
+	*port = ports[sel-1]
 }
 
 func wrappedSend(argv []string) {

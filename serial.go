@@ -20,7 +20,6 @@ var (
 	tty       serial.Port        // only used for serial connections
 	dev       io.ReadWriteCloser // used for both serial and tcp connections
 	tnState   int                // tracks telnet protocol state when reading
-	openBlock = make(chan string)
 )
 
 func boardReset(enterBoot bool) {
@@ -74,7 +73,6 @@ func blockUntilOpen() {
 func SerialConnect() {
 	if *port == "" {
 		commandSend <- "<open>"
-		*port = <-openBlock
 	}
 
 	for {
