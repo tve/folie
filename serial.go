@@ -71,7 +71,7 @@ func blockUntilOpen() {
 // SerialConnect opens and re-opens a serial port and feeds the receive channel.
 func SerialConnect() {
 	if *port == "" {
-		commandSend <- "<open>"
+		commandSend <- "!open"
 	}
 
 	for {
@@ -137,13 +137,17 @@ func SerialDispatch() {
 			os.Stdout.Write(data)
 
 		case line := <-commandSend:
-			if !SpecialCommand(line) {
-				data := []byte(line + "\r")
-				if *verbose {
-					fmt.Printf("send: %q\n", data)
+			if strings.HasPrefix(line, "!") {
+				if SpecialCommand(line) {
+					continue
 				}
-				serialSend <- data
+				line = line[1:]
 			}
+			data := []byte(line + "\r")
+			if *verbose {
+				fmt.Printf("send: %q\n", data)
+			}
+			serialSend <- data
 		}
 	}
 }
@@ -154,7 +158,10 @@ func SpecialCommand(line string) bool {
 	if len(cmd) > 0 {
 		switch cmd[0] {
 
-		case "<open>":
+		case "!":
+			fmt.Println("[enter '!h' for help]")
+
+		case "!o", "!open":
 			// TODO can't be typed in to re-open, only usable on startup
 			wrappedOpen(cmd)
 
