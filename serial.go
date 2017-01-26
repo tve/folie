@@ -102,7 +102,6 @@ func SerialConnect() {
 
 // SerialDispatch handles all incoming and outgoing serial data.
 func SerialDispatch() {
-	// outbound serial will be slowed down just a tad for Mecrisp/USB
 	go func() {
 		for data := range serialSend {
 			if dev == nil { // avoid write-while-closed panics
