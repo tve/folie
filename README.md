@@ -2,7 +2,7 @@
 
 ![](https://img.shields.io/badge/work-In_Progress-red.svg)
 [![GoDoc](https://godoc.org/github.com/jeelabs/folie?status.svg)](http://godoc.org/github.com/jeelabs/folie)
-[![license](https://img.shields.io/github/license/jeelabs/folie.svg)]()
+[![license](https://img.shields.io/github/license/jeelabs/folie.svg)](http://unlicense.org)
 
 The **Forth Live Explorer** is a command-line utility to talk to a
 micro-controller via a (local or remote) serial port. Its main mode of operation
