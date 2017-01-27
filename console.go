@@ -11,7 +11,6 @@ var (
 	console *readline.Instance
 )
 
-// ConsoleTask listens to the console with readline for editing & history.
 func ConsoleSetup() {
 	if readline.IsTerminal(1) {
 		os.Stdout = InsertCRs(os.Stdout)
@@ -28,6 +27,7 @@ func ConsoleSetup() {
 	check(err)
 }
 
+// ConsoleTask listens to the console with readline for editing & history.
 func ConsoleTask() {
 	for {
 		line, err := console.Readline()
