@@ -12,7 +12,7 @@ var (
 )
 
 // ConsoleTask listens to the console with readline for editing & history.
-func ConsoleTask() {
+func ConsoleSetup() {
 	if readline.IsTerminal(1) {
 		os.Stdout = InsertCRs(os.Stdout)
 	}
@@ -26,9 +26,9 @@ func ConsoleTask() {
 	}
 	console, err = readline.NewEx(&config)
 	check(err)
+}
 
-	go SerialConnect()
-
+func ConsoleTask() {
 	for {
 		line, err := console.Readline()
 		if err == readline.ErrInterrupt {

@@ -58,6 +58,9 @@ func blockUntilOpen() {
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
+	serialRecv = make(chan []byte)
+
+	go SerialDispatch()
 
 	// use readline's Stdout to force re-display of current input
 	fmt.Fprintf(console.Stdout(), "[connected to %s]\n", *port)
@@ -71,7 +74,7 @@ func blockUntilOpen() {
 // SerialConnect opens and re-opens a serial port and feeds the receive channel.
 func SerialConnect() {
 	if *port == "" {
-		commandSend <- "!open"
+		SpecialCommand("!open")
 	}
 
 	for {
@@ -97,6 +100,7 @@ func SerialConnect() {
 		dev.Close()
 		dev = nil
 		tty = nil
+		close(serialRecv)
 	}
 }
 
@@ -106,11 +110,11 @@ func SerialDispatch() {
 		for data := range serialSend {
 			if dev == nil { // avoid write-while-closed panics
 				fmt.Printf("[CAN'T WRITE! %s]\n", *port)
-				blockUntilOpen()
+				return
 			} else if _, err := dev.Write(data); err != nil {
 				fmt.Printf("[WRITE ERROR! %s]\n", *port)
 				dev.Close()
-				blockUntilOpen()
+				return
 			}
 		}
 	}()
@@ -118,9 +122,12 @@ func SerialDispatch() {
 	for {
 		select {
 
-		case data := <-serialRecv:
+		case data, ok := <-serialRecv:
 			if *verbose {
-				fmt.Printf("recv: %q\n", data)
+				fmt.Printf("recv: %q %v\n", data, ok)
+			}
+			if !ok {
+				return
 			}
 			os.Stdout.Write(data)
 

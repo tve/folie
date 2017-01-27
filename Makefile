@@ -1,6 +1,6 @@
 # not used yet
 test:
-	go test
+	go test ./comms
 
 # build folie for several platforms and compress for release
 builds: version.go

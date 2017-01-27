@@ -24,8 +24,9 @@ func main() {
 		fmt.Println("Folie", VERSION)
 	}
 
+	ConsoleSetup()
 	go ConsoleTask()
-	go SerialDispatch()
+	go SerialConnect()
 
 	if err, ok := <-done; ok {
 		if err != nil {
