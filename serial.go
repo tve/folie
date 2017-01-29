@@ -25,7 +25,10 @@ var (
 
 func selectPort() string {
 	allPorts, err := serial.GetPortsList()
-	check(err)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return ""
+	}
 
 	var ports []string
 	for _, p := range allPorts {
