@@ -2,7 +2,9 @@ package main
 
 import (
 	"bytes"
+	"io/ioutil"
 	"os"
+	"strings"
 
 	"github.com/chzyer/readline"
 )
@@ -21,9 +23,9 @@ func ConsoleSetup() {
 
 	var err error
 	config := readline.Config{
-		UniqueEditLine: true,
+		UniqueEditLine:    true,
 		HistorySearchFold: true,
-		AutoComplete: FileCompleter{},
+		AutoComplete:      FileCompleter{},
 	}
 	console, err = readline.NewEx(&config)
 	check(err)
@@ -63,8 +65,6 @@ func InsertCRs(out *os.File) *os.File {
 	return writeFile
 }
 
-type FileCompleter struct {}
-
 // Readline will pass the whole line and current offset to it
 // Completer need to pass all the candidates, and how long they shared the same characters in line
 // Example:
@@ -73,8 +73,36 @@ type FileCompleter struct {}
 //   Do("gi", 2) => ["t", "t-shell"], 2
 //   Do("git", 3) => ["", "-shell"], 3
 
+type FileCompleter struct{}
+
 func (f FileCompleter) Do(line []rune, pos int) (newLine [][]rune, length int) {
-	newLine = append(newLine, []rune{'a','b','c'})
+	typedSoFar := string(line[:pos])
+	spacePos := strings.IndexByte(typedSoFar, ' ')
+
+	if strings.HasPrefix(typedSoFar, "!") && spacePos > 1 {
+		slashPos := strings.LastIndexByte(typedSoFar, '/')
+		dir := "."
+		if slashPos < 0 {
+			slashPos = spacePos
+		}
+		if slashPos > spacePos {
+			dir = typedSoFar[spacePos+1 : slashPos+1]
+		}
+		prefix := typedSoFar[slashPos+1:]
+
+		files, _ := ioutil.ReadDir(dir)
+		for _, f := range files {
+			name := f.Name()
+			if strings.HasPrefix(name, prefix) {
+				suffix := name[len(prefix):]
+				if f.IsDir() {
+					suffix += "/"
+				}
+				newLine = append(newLine, []rune(suffix))
+			}
+		}
+	}
+
 	length = pos
 	return
 }
