@@ -54,47 +54,6 @@ func wrappedReset() {
 	}
 }
 
-func wrappedOpen(argv []string) {
-	allPorts, err := serial.GetPortsList()
-	check(err)
-
-	var ports []string
-	for _, p := range allPorts {
-		if !strings.HasPrefix(p, "/dev/tty.") {
-			ports = append(ports, p)
-		}
-	}
-	//sort.Strings(ports)
-
-	if len(ports) == 0 {
-		done <- fmt.Errorf("No serial ports found.")
-		return
-	}
-
-	fmt.Println("Select the serial port:")
-	for i, p := range ports {
-		fmt.Printf("%3d: %s\n", i+1, p)
-	}
-	console.SetPrompt("? ")
-	console.Refresh()
-	reply := <-commandSend
-	console.SetPrompt("")
-	fmt.Println(reply)
-
-	sel, _ := strconv.Atoi(reply)
-
-	// quit on index errors, since we have no other useful choice
-	defer func() {
-		if e := recover(); e != nil {
-			done <- nil // forces quit without producing an error message
-			return
-		}
-		fmt.Println("Enter '!help' for additional help, or ctrl-d to quit.")
-	}()
-
-	*port = ports[sel-1]
-}
-
 func wrappedSend(argv []string) {
 	if len(argv) == 1 {
 		fmt.Printf("Usage: %s <filename>\n", argv[0])

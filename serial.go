@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -21,6 +22,46 @@ var (
 	dev     io.ReadWriteCloser // used for both serial and tcp connections
 	tnState int                // tracks telnet protocol state when reading
 )
+
+func selectPort() string {
+	allPorts, err := serial.GetPortsList()
+	check(err)
+
+	var ports []string
+	for _, p := range allPorts {
+		if !strings.HasPrefix(p, "/dev/tty.") {
+			ports = append(ports, p)
+		}
+	}
+	//sort.Strings(ports)
+
+	if len(ports) == 0 {
+		fmt.Fprintln(os.Stderr, "No serial ports found.")
+		return ""
+	}
+
+	fmt.Fprintln(console.Stdout(), "Select the serial port:")
+	for i, p := range ports {
+		fmt.Fprintf(console.Stdout(), "%3d: %s\n", i+1, p)
+	}
+	console.SetPrompt("? ")
+	console.Refresh()
+	reply, _ := console.Readline()
+	console.SetPrompt("")
+	fmt.Println(reply)
+
+	sel, _ := strconv.Atoi(reply)
+
+	// quit on index errors, since we have no other useful choice
+	defer func() {
+		if e := recover(); e != nil {
+			return
+		}
+		fmt.Println("Enter '!help' for additional help, or ctrl-d to quit.")
+	}()
+
+	return ports[sel-1]
+}
 
 func boardReset(enterBoot bool) {
 	if !*raw {
@@ -73,10 +114,6 @@ func blockUntilOpen() {
 
 // SerialConnect opens and re-opens a serial port and feeds the receive channel.
 func SerialConnect() {
-	if *port == "" {
-		SpecialCommand("!open")
-	}
-
 	for {
 		tnState = 0 // clear telnet state before anything comes in
 
@@ -155,10 +192,6 @@ func SpecialCommand(line string) bool {
 
 		case "!":
 			fmt.Println("[enter '!h' for help]")
-
-		case "!o", "!open":
-			// TODO can't be typed in to re-open, only usable on startup
-			wrappedOpen(cmd)
 
 		case "!c", "!cd":
 			fmt.Println(line)

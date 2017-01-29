@@ -25,15 +25,22 @@ func main() {
 	}
 
 	ConsoleSetup()
-	go ConsoleTask()
-	go SerialConnect()
 
-	if err, ok := <-done; ok {
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
+	if *port == "" {
+		*port = selectPort()
+	}
+
+	if *port != "" {
+		go ConsoleTask()
+		go SerialConnect()
+
+		if err, ok := <-done; ok {
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+			}
+			console.Close()
+			os.Exit(1)
 		}
-		console.Close()
-		os.Exit(1)
 	}
 }
 
