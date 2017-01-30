@@ -81,14 +81,15 @@ func (f FileCompleter) Do(line []rune, pos int) (newLine [][]rune, length int) {
 
 	if strings.HasPrefix(typedSoFar, "!") && spacePos > 1 {
 		slashPos := strings.LastIndexByte(typedSoFar, '/')
-		dir := "."
 		if slashPos < 0 {
 			slashPos = spacePos
 		}
+		prefix := typedSoFar[slashPos+1:]
+
+		dir := "."
 		if slashPos > spacePos {
 			dir = typedSoFar[spacePos+1 : slashPos+1]
 		}
-		prefix := typedSoFar[slashPos+1:]
 
 		files, _ := ioutil.ReadDir(dir)
 		for _, f := range files {
