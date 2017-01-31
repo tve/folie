@@ -125,6 +125,9 @@ func match(expect string) bool {
 								}
 							}
 						}
+						if msg == "" {
+							return true  // don't show empty [if]-skipped lines
+						}
 						fmt.Printf("%s\n", msg)
 						if hasFatalError(last) {
 							return false // no point in keeping going
