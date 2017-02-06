@@ -112,7 +112,6 @@ func blockUntilOpen() {
 	if !*raw {
 		telnetInit()
 	}
-	boardReset(false)
 }
 
 // SerialConnect opens and re-opens a serial port and feeds the receive channel.
