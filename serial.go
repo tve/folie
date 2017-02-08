@@ -71,10 +71,10 @@ func boardReset(enterBoot bool) {
 		telnetReset(enterBoot)
 	} else if tty != nil {
 		time.Sleep(10 * time.Millisecond)
-		tty.SetDTR(true)
+		tty.SetDTR(false)
 		tty.SetRTS(!enterBoot)
 		time.Sleep(10 * time.Millisecond)
-		tty.SetDTR(false)
+		tty.SetDTR(true)
 		time.Sleep(10 * time.Millisecond)
 	}
 }
