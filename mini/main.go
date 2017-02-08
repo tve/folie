@@ -41,7 +41,6 @@ func main() {
 	for {
 		select {
 		case data := <-serialRecv:
-			//fmt.Fprint(conOut, "<"+string(data)+">")
 			fmt.Fprint(conOut, string(data))
 		case line := <-commandRecv:
 			device.Write([]byte(line + "\r"))
@@ -65,14 +64,9 @@ func main() {
 				reply = reply[len(line)+1:]
 			}
 			if strings.HasSuffix(reply, " ok.\n") {
-				reply = reply[:len(reply)-5]
-				if reply != "" {
-					fmt.Fprintln(conOut, reply)
-				}
-			} else if reply != "" {
-				if reply[len(reply)-1] != '\n' {
-					reply += "[no-lf]\n"
-				}
+				reply = reply[:len(reply)-5] + "\n"
+			}
+			if reply != "\n" {
 				fmt.Fprint(conOut, reply)
 			}
 		}
