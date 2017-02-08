@@ -44,22 +44,7 @@ func main() {
 			fmt.Fprint(conOut, string(data))
 		case line := <-commandRecv:
 			device.Write([]byte(line + "\r"))
-			reply := ""
-		More:
-			for {
-				select {
-				case data := <-serialRecv:
-					reply += string(data)
-					if strings.HasSuffix(reply, " ok.\n") ||
-						strings.HasSuffix(reply, " not found.\n") ||
-						strings.HasSuffix(reply, " Stack underflow\n") {
-						break More
-					}
-				case <-time.After(10 * time.Millisecond):
-					reply += "[timeout]\n"
-					break More
-				}
-			}
+			reply := getReply()
 			if strings.HasPrefix(reply, line+" ") {
 				reply = reply[len(line)+1:]
 			}
@@ -118,4 +103,23 @@ func consoleInput() {
 		check(err)
 		commandRecv <- line
 	}
+}
+
+func getReply() (reply string) {
+	for {
+		select {
+		case data := <-serialRecv:
+			reply += string(data)
+			if strings.HasSuffix(reply, " ok.\n") ||
+				strings.HasSuffix(reply, " not found.\n") ||
+				strings.HasSuffix(reply, " is compile-only.\n") ||
+				strings.HasSuffix(reply, " Stack underflow\n") {
+				return
+			}
+		case <-time.After(10 * time.Millisecond):
+			reply += "[timeout]\n"
+			return
+		}
+	}
+	return
 }
