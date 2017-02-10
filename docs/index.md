@@ -21,7 +21,7 @@ There are a number of ready-made executables on the
 [Releases](https://github.com/jeelabs/folie/releases) page. There are no
 dependencies, they'll also run on older versions of each OS.
 
-### Some more links
+## Some more links
 
 For all background info and docs, see the weblog at <http://jeelabs.org/>.
 
@@ -31,8 +31,8 @@ tracker](https://github.com/jeelabs/folie/issues) on GitHub.
 For general discussion and help, there's a forum at <http://jeelabs.net/>.  You
 have to [register](http://jeelabs.net/account/register) and jump through a few
 [hoops](http://jeelabs.net/boards/11/topics/5690) to be able to post and
-participate in the discussions, due to some anti-spam measures - _probably
-because of this, the forum is more or less noise-free._
+participate in the discussions, due to some anti-spam measures - _but as a
+result, the forum is more or less noise-free._
 
 Everything in the folie repository is Open Source, see the
 "[unlicense](https://github.com/jeelabs/folie/blob/master/UNLICENSE)".  To

@@ -45,6 +45,7 @@ func main() {
 		case line := <-commandRecv:
 			device.Write([]byte(line + "\r"))
 			reply := getReply()
+			//fmt.Fprintf(conOut, "%q\n", reply)
 			if strings.HasPrefix(reply, line+" ") {
 				reply = reply[len(line)+1:]
 			}
