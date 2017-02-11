@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"io"
@@ -147,6 +148,8 @@ func SerialConnect() {
 func SerialDispatch() {
 	go func() {
 		for data := range serialSend {
+			// send spaces iso tabs, because mecrisp echoes tabs differently
+			data = bytes.Replace(data, []byte{'\t'}, []byte{' '}, -1)
 			if dev == nil { // avoid write-while-closed panics
 				fmt.Printf("[CAN'T WRITE! %s]\n", *port)
 				return
