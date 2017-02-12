@@ -14,7 +14,6 @@ var callCount int
 
 // IncludeFile sends out one file, expanding embdded includes as needed.
 func IncludeFile(name string, level int) bool {
-	fmt.Println(name)
 	f, err := os.Open(name)
 	if err != nil {
 		fmt.Println(err)
