@@ -14,6 +14,7 @@ var callCount int
 
 // IncludeFile sends out one file, expanding embdded includes as needed.
 func IncludeFile(name string, level int) bool {
+	fmt.Println(name)
 	f, err := os.Open(name)
 	if err != nil {
 		fmt.Println(err)
@@ -21,6 +22,7 @@ func IncludeFile(name string, level int) bool {
 	}
 	defer f.Close()
 
+	currDir := path.Dir(name)
 	currFile := path.Base(name)
 	currLine := 0
 	if level == 0 {
@@ -48,7 +50,7 @@ func IncludeFile(name string, level int) bool {
 		if strings.HasPrefix(line, "include ") {
 			for _, fname := range strings.Fields(line)[1:] {
 				statusMsg(lastMsg, "")
-				if !IncludeFile(fname, level+1) {
+				if !IncludeFile(path.Join(currDir, fname), level+1) {
 					return false
 				}
 			}
