@@ -117,7 +117,7 @@ func getReply() (reply string) {
 				strings.HasSuffix(reply, " Stack underflow\n") {
 				return
 			}
-		case <-time.After(50 * time.Millisecond):
+		case <-time.After(500 * time.Millisecond):
 			reply += "[timeout]\n"
 			return
 		}
