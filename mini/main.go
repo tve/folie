@@ -17,8 +17,13 @@ var (
 	console     *readline.Instance
 	conOut      io.Writer
 	serialRecv  = make(chan []byte)
-	commandRecv = make(chan string)
+	commandRecv = make(chan Command)
 )
+
+type Command struct {
+	line string
+	done chan struct{}
+}
 
 func main() {
 	log.SetFlags(0) // omit timestamps
@@ -45,21 +50,28 @@ func main() {
 	go consoleInput()
 
 	for {
+		var done chan struct{}
 		reply := ""
 		select {
 		case data := <-serialRecv:
 			reply = string(data)
-		case line := <-commandRecv:
+		case cmd := <-commandRecv:
 			console.SetPrompt("- ")
 			console.Refresh()
-			device.Write([]byte(line + "\r"))
-			reply = getReply()
+			device.Write([]byte(cmd.line + "\r"))
+			done = cmd.done
+		}
+		if !strings.HasSuffix(reply, "\n") {
+			reply += getReply()
 		}
 		if strings.HasSuffix(reply, " ok.\n") {
 			console.SetPrompt("> ")
 		}
 		console.Refresh()
 		fmt.Fprint(conOut, reply)
+		if done != nil {
+			close(done)
+		}
 	}
 }
 
@@ -106,7 +118,9 @@ func consoleInput() {
 	for {
 		line, err := console.Readline()
 		check(err)
-		commandRecv <- line
+		done := make(chan struct{})
+		commandRecv <- Command{line, done}
+		<-done
 	}
 }
 
