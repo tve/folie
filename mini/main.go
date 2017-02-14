@@ -23,14 +23,20 @@ var (
 func main() {
 	log.SetFlags(0) // omit timestamps
 
+	config := readline.Config{
+		UniqueEditLine: true,
+		Prompt:         "? ",
+	}
+
 	var err error
-	console, err = readline.New("? ")
+	console, err = readline.NewEx(&config)
 	check(err)
+
 	conOut = console.Stdout()
 
 	port := selectPort()
 
-	console.SetPrompt("- ")
+	console.SetPrompt(". ")
 
 	device, err = serial.Open(port, &serial.Mode{BaudRate: 115200})
 	check(err)
@@ -48,17 +54,9 @@ func main() {
 			console.Refresh()
 			device.Write([]byte(line + "\r"))
 			reply = getReply()
-			//fmt.Fprintf(conOut, "%q\n", reply)
-			if strings.HasPrefix(reply, line+" ") {
-				reply = reply[len(line)+1:]
-			}
 		}
 		if strings.HasSuffix(reply, " ok.\n") {
-			reply = reply[:len(reply)-5] + "\n"
-			if reply == "\n" {
-				reply = ""
-			}
-			console.SetPrompt("+ ")
+			console.SetPrompt("> ")
 		}
 		console.Refresh()
 		fmt.Fprint(conOut, reply)
@@ -121,10 +119,11 @@ func getReply() (reply string) {
 				strings.HasSuffix(reply, " not found.\n") ||
 				strings.HasSuffix(reply, " is compile-only.\n") ||
 				strings.HasSuffix(reply, " Stack underflow\n") {
+				console.SetPrompt("> ")
 				return
 			}
 		case <-time.After(500 * time.Millisecond):
-			//reply += "[timeout]\n"
+			reply += "[timeout]\n"
 			return
 		}
 	}
