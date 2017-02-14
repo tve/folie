@@ -30,7 +30,7 @@ func main() {
 
 	port := selectPort()
 
-	console.SetPrompt("> ")
+	console.SetPrompt("- ")
 
 	device, err = serial.Open(port, &serial.Mode{BaudRate: 115200})
 	check(err)
@@ -39,23 +39,29 @@ func main() {
 	go consoleInput()
 
 	for {
+		reply := ""
 		select {
 		case data := <-serialRecv:
-			fmt.Fprint(conOut, string(data))
+			reply = string(data)
 		case line := <-commandRecv:
+			console.SetPrompt("- ")
+			console.Refresh()
 			device.Write([]byte(line + "\r"))
-			reply := getReply()
+			reply = getReply()
 			//fmt.Fprintf(conOut, "%q\n", reply)
 			if strings.HasPrefix(reply, line+" ") {
 				reply = reply[len(line)+1:]
 			}
-			if strings.HasSuffix(reply, " ok.\n") {
-				reply = reply[:len(reply)-5] + "\n"
-			}
-			if reply != "\n" {
-				fmt.Fprint(conOut, reply)
-			}
 		}
+		if strings.HasSuffix(reply, " ok.\n") {
+			reply = reply[:len(reply)-5] + "\n"
+			if reply == "\n" {
+				reply = ""
+			}
+			console.SetPrompt("+ ")
+		}
+		console.Refresh()
+		fmt.Fprint(conOut, reply)
 	}
 }
 
@@ -118,7 +124,7 @@ func getReply() (reply string) {
 				return
 			}
 		case <-time.After(500 * time.Millisecond):
-			reply += "[timeout]\n"
+			//reply += "[timeout]\n"
 			return
 		}
 	}
