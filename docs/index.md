@@ -21,9 +21,9 @@ There are a number of ready-made executables on the
 [Releases](https://github.com/jeelabs/folie/releases) page. There are no
 dependencies, they'll also run on older versions of each OS.
 
-## Some more links
+## More links
 
-For all background info and docs, see the weblog at <http://jeelabs.org/>.
+For all background info and articles, see the weblog at <http://jeelabs.org/>.
 
 For reporting problems and bugs, please use the [issue
 tracker](https://github.com/jeelabs/folie/issues) on GitHub.

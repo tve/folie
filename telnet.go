@@ -30,6 +30,8 @@ func telnetInit() {
 	serialSend <- []byte{Iac, Will, ComPortOpt}
 	telnetEscape(SetParity, PAR_NONE)
 	telnetEscape(SetControl, FLOW_OFF)
+	telnetEscape(SetControl, RTS_ON)
+	telnetEscape(SetControl, DTR_OFF)
 }
 
 func telnetEscape(typ, val uint8) {
