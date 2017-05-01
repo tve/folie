@@ -144,6 +144,8 @@ func sendCmd(cmd uint8) {
 
 func connectToTarget() {
 	for {
+		boardReset(true) // reset with BOOT0 high to enter boot loader
+		time.Sleep(100 * time.Millisecond)
 		sendByte(0x7F)
 		r := getReply()
 		if r == ACK || r == NAK {
@@ -153,7 +155,6 @@ func connectToTarget() {
 			break
 		}
 		fmt.Print(".") // connecting...
-		time.Sleep(time.Second)
 	}
 }
 

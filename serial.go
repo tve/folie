@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bytes"
+	//"bytes"
 	"flag"
 	"fmt"
 	"io"
@@ -71,13 +71,12 @@ func boardReset(enterBoot bool) {
 	if !*raw {
 		telnetReset(enterBoot)
 	} else if tty != nil {
-		time.Sleep(10 * time.Millisecond)
 		tty.SetDTR(false)
 		tty.SetRTS(!enterBoot)
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(time.Millisecond)
 		tty.SetDTR(true)
-		time.Sleep(10 * time.Millisecond)
 	}
+	time.Sleep(time.Millisecond)
 }
 
 func blockUntilOpen() {
@@ -112,6 +111,9 @@ func blockUntilOpen() {
 
 	if !*raw {
 		telnetInit()
+	} else {
+		tty.SetRTS(true)
+		tty.SetDTR(true)
 	}
 }
 
@@ -149,7 +151,7 @@ func SerialDispatch() {
 	go func() {
 		for data := range serialSend {
 			// send spaces iso tabs, because mecrisp echoes tabs differently
-			data = bytes.Replace(data, []byte{'\t'}, []byte{' '}, -1)
+			//data = bytes.Replace(data, []byte{'\t'}, []byte{' '}, -1)
 			if dev == nil { // avoid write-while-closed panics
 				fmt.Printf("[CAN'T WRITE! %s]\n", *port)
 				return

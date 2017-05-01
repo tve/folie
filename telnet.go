@@ -26,7 +26,6 @@ const (
 )
 
 func telnetInit() {
-	time.Sleep(100 * time.Millisecond)
 	serialSend <- []byte{Iac, Will, ComPortOpt}
 	telnetEscape(SetParity, PAR_NONE)
 	telnetEscape(SetControl, FLOW_OFF)
@@ -50,7 +49,7 @@ func telnetReset(enterBoot bool) {
 		telnetEscape(SetControl, RTS_ON)
 		telnetEscape(SetParity, PAR_NONE)
 	}
-	time.Sleep(250 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	telnetEscape(SetControl, DTR_OFF)
 }
 
