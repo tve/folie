@@ -9,9 +9,9 @@ builds: version.go
 	@ echo "  MacOSX 64-bit"
 	@ GOOS=darwin GOARCH=amd64 go build -a -o $@/folie-macos64
 	@ echo "  Windows 32-bit"
-	@ GOOS=windows GOARCH=386 go build -a -o $@/folie-windows
+	@ GOOS=windows GOARCH=386 go build -a -o $@/folie-windows.exe
 	@ echo "  Windows 64-bit"
-	@ GOOS=windows GOARCH=amd64 go build -a -o $@/folie-windows64
+	@ GOOS=windows GOARCH=amd64 go build -a -o $@/folie-windows64.exe
 	@ echo "  Linux 32-bit"
 	@ GOOS=linux GOARCH=386 go build -a -o $@/folie-linux
 	@ echo "  Linux 64-bit"
