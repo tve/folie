@@ -71,10 +71,10 @@ func boardReset(enterBoot bool) {
 	if !*raw {
 		telnetReset(enterBoot)
 	} else if tty != nil {
-		tty.SetDTR(false)
+		tty.SetDTR(true)
 		tty.SetRTS(!enterBoot)
 		time.Sleep(time.Millisecond)
-		tty.SetDTR(true)
+		tty.SetDTR(false)
 	}
 	time.Sleep(time.Millisecond)
 }
@@ -113,7 +113,7 @@ func blockUntilOpen() {
 		telnetInit()
 	} else {
 		tty.SetRTS(true)
-		tty.SetDTR(true)
+		tty.SetDTR(false)
 	}
 }
 
