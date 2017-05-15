@@ -7,6 +7,8 @@ import (
 	"io"
 	"net"
 	"os"
+	"path"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -83,7 +85,7 @@ func blockUntilOpen() {
 	var lastErr string
 	for {
 		var err error
-		if _, err = os.Stat(*port); os.IsNotExist(err) &&
+		if _, err = os.Lstat(*port); os.IsNotExist(err) &&
 			strings.Count(*port, ":") == 1 && !strings.HasSuffix(*port, ":") {
 			// if nonexistent, it's an ip addr + port, open it as network port
 			dev, err = net.Dial("tcp", *port)
@@ -92,6 +94,9 @@ func blockUntilOpen() {
 				BaudRate: *baud,
 			})
 			dev = tty
+			if runtime.GOOS == "linux" {
+				switchToByPathDev("/dev/serial/by-path/")
+			}
 		}
 		if err == nil {
 			break
@@ -107,13 +112,30 @@ func blockUntilOpen() {
 	go SerialDispatch()
 
 	// use readline's Stdout to force re-display of current input
-	fmt.Fprintf(console.Stdout(), "[connected to %s]\n", *port)
+	fmt.Fprintf(console.Stdout(), "[connected to %s]\n", path.Base(*port))
 
 	if !*raw {
 		telnetInit()
 	} else {
 		tty.SetRTS(true)
 		tty.SetDTR(false)
+	}
+}
+
+// switchToByPathDev allows re-opening a device even if its name changes
+func switchToByPathDev(prefix string) {
+	if dir, err := os.Open(prefix); err == nil {
+		names, _ := dir.Readdirnames(-1)
+		// look for an entry matching the current serial device name
+		for _, name := range names {
+			alias := prefix + name
+			link, e := os.Readlink(alias)
+			if e == nil && path.Base(*port) == path.Base(link) {
+				// switch to the session-indepenent name (only switches once)
+				*port = alias
+				break
+			}
+		}
 	}
 }
 
