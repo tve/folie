@@ -62,15 +62,14 @@ func main() {
 	//fmt.Fprintf(os.Stderr, "Selected port %s\n", *port)
 
 	// Decide whether to listen on SSH locally to accept connections.
-	//var sshServer *folie.SSHServer
+	var sshServer *folie.SSHServer
 	if *listen != "" {
 		var err error
-		if _, err = folie.NewSSHServer(*listen, *serverKey, *authorizedKeys); err != nil {
+		if sshServer, err = folie.NewSSHServer(*listen, *serverKey, *authorizedKeys); err != nil {
 			fmt.Fprintf(os.Stderr, "SSH server %s", err)
 			os.Exit(1)
 		}
 	}
-	fmt.Fprintln(os.Stderr, "SSH ready")
 
 	// Start the goroutines for the local interactive console.
 	done := make(chan error)
@@ -79,24 +78,29 @@ func main() {
 	folie.RunConsole(rdl, consoleTx, consoleRx, done)
 
 	// Open the microcontroller serial port or telnet connection and start goroutines.
-	//microTx := make(chan []byte, 1)
-	//microRx := make(chan []byte, 1)
+	microTx := make(chan []byte, 1)
+	microRx := make(chan []byte, 1)
 	var micro folie.MicroConn
 	if _, err := os.Stat(*port); err == nil {
 		micro = &folie.SerialConn{Path: *port, Baud: *baud}
 	} else {
 		micro = &folie.TelnetConn{Addr: *port}
 	}
-	if err := folie.MicroConnRunner(micro, consoleRx, consoleTx); err != nil {
+	if err := folie.MicroConnRunner(micro, microTx, microRx); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+
+	// Start the command processor in the middle.
+	cmd := folie.CommandProcessor{MicroTx: microTx, MicroRx: microRx, ConsoleRx: consoleRx}
+	cmd.AddConsoleTx(consoleTx)
+	cmd.Start()
+
+	if sshServer != nil {
+		go sshServer.Run(consoleRx, func(tx chan<- []byte) { cmd.AddConsoleTx(tx) })
+	}
+
 	fmt.Fprintln(os.Stderr, "[Ready!]")
-
-	//if sshServer != nil {
-	//go sshServer.Run(serialRecv, serialSend, commandSend, done)
-	//}
-
 	if err, ok := <-done; ok {
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)

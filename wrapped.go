@@ -7,7 +7,55 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+	"sync"
 )
+
+type CommandProcessor struct {
+	MicroTx   chan<- []byte // transmit to microcontroller
+	MicroRx   <-chan []byte // receive from microcontroller
+	ConsoleRx <-chan []byte // receive from multiple consoles
+
+	mu        sync.Mutex      // protect fields below
+	consoleTx []chan<- []byte // broadcast to multiple consoles
+}
+
+func (cp *CommandProcessor) AddConsoleTx(tx chan<- []byte) {
+	cp.mu.Lock()
+	defer cp.mu.Unlock()
+
+	cp.consoleTx = append(cp.consoleTx, tx)
+}
+
+func (cp *CommandProcessor) RemoveConsoleTx(tx chan<- []byte) {
+	cp.mu.Lock()
+	defer cp.mu.Unlock()
+
+	for i := range cp.consoleTx {
+		if cp.consoleTx[i] == tx {
+			cp.consoleTx = append(cp.consoleTx[:i], cp.consoleTx[i+1:]...)
+		}
+	}
+}
+
+func (cp *CommandProcessor) Start() {
+	// Goroutine to read from microcontroller and output
+	go func() {
+		for buf := range cp.MicroRx {
+			cp.mu.Lock()
+			for _, tx := range cp.consoleTx {
+				tx <- buf
+			}
+			cp.mu.Unlock()
+		}
+	}()
+
+	// Goroutine to read from consoles and output to uC
+	go func() {
+		for buf := range cp.ConsoleRx {
+			cp.MicroTx <- buf
+		}
+	}()
+}
 
 func wrappedCd(argv []string) {
 	if len(argv) > 1 {

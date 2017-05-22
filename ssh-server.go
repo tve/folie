@@ -63,23 +63,21 @@ func NewSSHServer(listenAddr, serverKeyFile, authorizedKeysFile string) (*SSHSer
 
 // Run is an infinite loop that accepts incoming connections and for each connection shuffles
 // lines between the connection and the serial port.
-//
-// Send and recv are channels to send, respectively receive on the serial port.
-// Cmd is a channel to ???.
-// Done is a channel to signal a fatal error that causes folie to exit.
-func (ss *SSHServer) Run(send chan<- []byte, recv <-chan []byte, cmd chan string, done chan error) {
+func (ss *SSHServer) Run(rx chan<- []byte, addTxChan func(chan<- []byte)) {
 	// Run the accept loop, it ends with os.Exit...
 	for {
 		// Accept a connection.
 		conn, err := ss.listener.Accept()
 		if err != nil {
-			// Fatal error? For now just kill it all.
-			done <- fmt.Errorf("fatal SSH listener error: %s", err)
-			return
+			fmt.Fprintf(os.Stderr, "fatal SSH listener error: %s", err)
+			continue
 		}
+		fmt.Fprintf(os.Stderr, "\n[Accepted SSH from %s]\n", conn.RemoteAddr())
 
 		// Start goroutine to service the connection.
-		go ss.service(conn, send, recv, cmd)
+		tx := make(chan []byte, 1)
+		addTxChan(tx)
+		go ss.service(conn, rx, tx)
 	}
 }
 
@@ -107,7 +105,7 @@ func readAuthorizedKeys(file string) (map[string]struct{}, error) {
 }
 
 // service initalizes a connection and then services it.
-func (ss *SSHServer) service(conn net.Conn, send chan<- []byte, recv <-chan []byte, cmd chan string) {
+func (ss *SSHServer) service(conn net.Conn, rx chan<- []byte, tx <-chan []byte) { //, cmd chan string) {
 	// Perform SSH handshake. newChan is a channel where new SSH channel open requests come int
 	// and reqChan is where out-of-band requests come in.
 	_, newChan, reqChan, err := ssh.NewServerConn(conn, ss.sshConfig)
@@ -163,7 +161,7 @@ func (ss *SSHServer) service(conn net.Conn, send chan<- []byte, recv <-chan []by
 				}
 				// write the line to serial
 				if len(line) > 0 { // should always be true...
-					send <- line[:len(line)-1] // strip trailing \n
+					rx <- line
 				}
 			}
 		}()
@@ -171,9 +169,7 @@ func (ss *SSHServer) service(conn net.Conn, send chan<- []byte, recv <-chan []by
 		// Service incoming serial data and forward to SSH.
 		go func() {
 			defer channel.Close()
-			for line := range recv {
-				// Get a line from serial.
-				line = append(line, '\n')
+			for line := range tx {
 				// Write the line to SSH, need to loop over individual write calls.
 				for {
 					n, err := channel.Write(line)

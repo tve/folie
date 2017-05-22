@@ -48,7 +48,7 @@ func RunConsole(rdl *readline.Instance, tx <-chan []byte, rx chan<- []byte, done
 			// Convert to []byte and add terminating CR.
 			buf := make([]byte, len(line)+1)
 			copy(buf, line)
-			buf[len(line)] = '\r'
+			buf[len(line)] = '\n'
 			rx <- buf
 		}
 	}()
