@@ -1,4 +1,6 @@
-package main
+package folie
+
+// This file contains the machinery for the forth include directive that pulls files in.
 
 import (
 	"bufio"
@@ -12,11 +14,11 @@ import (
 
 var callCount int
 
-// IncludeFile sends out one file, expanding embdded includes as needed.
-func IncludeFile(name string, level int) bool {
+// IncludeFile sends out one file onto tx, line by line, expanding embedded includes as needed.
+func IncludeFile(tx chan<- []byte, name string, level int) bool {
 	f, err := os.Open(name)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(os.Stderr, err)
 		return false
 	}
 	defer f.Close()
@@ -49,12 +51,12 @@ func IncludeFile(name string, level int) bool {
 		if strings.HasPrefix(line, "include ") {
 			for _, fname := range strings.Fields(line)[1:] {
 				statusMsg(lastMsg, "")
-				if !IncludeFile(path.Join(currDir, fname), level+1) {
+				if !IncludeFile(tx, path.Join(currDir, fname), level+1) {
 					return false
 				}
 			}
 		} else {
-			serialSend <- []byte(line + "\r")
+			tx <- []byte(line + "\r")
 			if !match(line) {
 				return false
 			}
@@ -88,15 +90,17 @@ func match(expect string) bool {
 	for {
 		select {
 
-		case data := <-serialRecv:
-			pending = append(pending, data...)
-			if !timer.Stop() {
-				<-timer.C
-			}
-			timer.Reset(time.Second)
+		/*
+			case data := <-serialRecv:
+				pending = append(pending, data...)
+				if !timer.Stop() {
+					<-timer.C
+				}
+				timer.Reset(time.Second)
 
-		case <-commandSend:
-			return false // abort include
+			case <-commandSend:
+				return false // abort include
+		*/
 
 		case <-time.After(10 * time.Millisecond):
 			if !bytes.Contains(pending, []byte{'\n'}) {

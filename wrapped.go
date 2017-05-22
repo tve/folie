@@ -1,16 +1,12 @@
-package main
+package folie
+
+// This file contains !commands.
 
 import (
 	"fmt"
 	"io/ioutil"
-	"net/http"
-	"net/url"
 	"os"
-	"sort"
-	"strconv"
 	"strings"
-
-	"go.bug.st/serial.v1"
 )
 
 func wrappedCd(argv []string) {
@@ -47,11 +43,13 @@ func wrappedLs(argv []string) {
 }
 
 func wrappedReset() {
-	if dev == nil {
-		fmt.Println("[use CTRL-D to exit]")
-	} else {
-		boardReset(false)
-	}
+	/*
+		if dev == nil {
+			fmt.Println("[use CTRL-D to exit]")
+		} else {
+			boardReset(false)
+		}
+	*/
 }
 
 func wrappedSend(argv []string) {
@@ -59,7 +57,7 @@ func wrappedSend(argv []string) {
 		fmt.Printf("Usage: %s <filename>\n", argv[0])
 		return
 	}
-	if !IncludeFile(argv[1], 0) {
+	if !IncludeFile(nil, argv[1], 0) { // FIXME: need tx channel
 		fmt.Println("Send failed.")
 	}
 }
@@ -79,55 +77,57 @@ func crc16(data []byte) uint16 {
 }
 
 func wrappedUpload(argv []string) {
-	names := AssetNames()
-	sort.Strings(names)
+	/*
+		names := AssetNames()
+		sort.Strings(names)
 
-	if len(argv) == 1 {
-		fmt.Println("These firmware images are built-in:")
-		for i, name := range names {
-			data, _ := Asset(name)
-			fmt.Printf("%3d: %-16s %5db  crc:%04X\n",
-				i+1, name, len(data), crc16(data))
-		}
-		fmt.Println("Use '!u <n>' to upload a specific one.")
-		return
-	}
-
-	// try built-in images first, indicated by entering a valid number
-	var data []byte
-	if n, err := strconv.Atoi(argv[1]); err == nil && 0 < n && n <= len(names) {
-		data, _ = Asset(names[n-1])
-	} else if u, err := url.Parse(argv[1]); err == nil && u.Scheme != "" {
-		fmt.Print("Fetching... ")
-		res, err := http.Get(argv[1])
-		if err == nil {
-			data, err = ioutil.ReadAll(res.Body)
-			res.Body.Close()
-		}
-		if err != nil {
-			fmt.Println(err)
+		if len(argv) == 1 {
+			fmt.Println("These firmware images are built-in:")
+			for i, name := range names {
+				data, _ := Asset(name)
+				fmt.Printf("%3d: %-16s %5db  crc:%04X\n",
+					i+1, name, len(data), crc16(data))
+			}
+			fmt.Println("Use '!u <n>' to upload a specific one.")
 			return
 		}
-		fmt.Printf("got it, crc:%04X\n", crc16(data))
-	} else { // else try opening the arg as file
-		f, err := os.Open(argv[1])
-		if err == nil {
-			data, err = ioutil.ReadAll(f)
-			f.Close()
+
+		// try built-in images first, indicated by entering a valid number
+		var data []byte
+		if n, err := strconv.Atoi(argv[1]); err == nil && 0 < n && n <= len(names) {
+			data, _ = Asset(names[n-1])
+		} else if u, err := url.Parse(argv[1]); err == nil && u.Scheme != "" {
+			fmt.Print("Fetching... ")
+			res, err := http.Get(argv[1])
+			if err == nil {
+				data, err = ioutil.ReadAll(res.Body)
+				res.Body.Close()
+			}
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			fmt.Printf("got it, crc:%04X\n", crc16(data))
+		} else { // else try opening the arg as file
+			f, err := os.Open(argv[1])
+			if err == nil {
+				data, err = ioutil.ReadAll(f)
+				f.Close()
+			}
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
 		}
-		if err != nil {
-			fmt.Println(err)
-			return
+
+		if tty != nil && *raw {
+			// temporarily switch to even parity during upload
+			tty.SetMode(&serial.Mode{BaudRate: *baud, Parity: serial.EvenParity})
+			defer tty.SetMode(&serial.Mode{BaudRate: *baud})
 		}
-	}
 
-	if tty != nil && *raw {
-		// temporarily switch to even parity during upload
-		tty.SetMode(&serial.Mode{BaudRate: *baud, Parity: serial.EvenParity})
-		defer tty.SetMode(&serial.Mode{BaudRate: *baud})
-	}
+		defer boardReset(false) // reset with BOOT0 low to restart normally
 
-	defer boardReset(false) // reset with BOOT0 low to restart normally
-
-	Uploader(data)
+		Uploader(data)
+	*/
 }

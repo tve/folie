@@ -1,4 +1,6 @@
-package main
+package folie
+
+// This file contains the SSH server.
 
 import (
 	"bufio"
@@ -41,12 +43,12 @@ func NewSSHServer(listenAddr, serverKeyFile, authorizedKeysFile string) (*SSHSer
 	// Set-up host key.
 	privateBytes, err := ioutil.ReadFile(serverKeyFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load host key from %s:", serverKeyFile, err)
+		return nil, fmt.Errorf("failed to load host key from %s: %s", serverKeyFile, err)
 	}
 
 	private, err := ssh.ParsePrivateKey(privateBytes)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse host key from %s:", serverKeyFile, err)
+		return nil, fmt.Errorf("failed to parse host key from %s: %s", serverKeyFile, err)
 	}
 	config.AddHostKey(private)
 
@@ -110,7 +112,7 @@ func (ss *SSHServer) service(conn net.Conn, send chan<- []byte, recv <-chan []by
 	// and reqChan is where out-of-band requests come in.
 	_, newChan, reqChan, err := ssh.NewServerConn(conn, ss.sshConfig)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed SSH handshake: \n", err)
+		fmt.Fprintf(os.Stderr, "Failed SSH handshake: %s\n", err)
 		return // the connection is already closed by NewServerConn
 	}
 
@@ -139,6 +141,8 @@ func (ss *SSHServer) service(conn net.Conn, send chan<- []byte, recv <-chan []by
 				switch req.Type {
 				case "shell": // used by std SSH clients to get started
 					req.Reply(true, nil)
+				case "env": // used by std SSH client
+					req.Reply(true, nil)
 				default:
 					fmt.Fprintf(os.Stderr, "unknown SSH request: %s\n", req.Type)
 					req.Reply(false, nil)
@@ -154,7 +158,7 @@ func (ss *SSHServer) service(conn net.Conn, send chan<- []byte, recv <-chan []by
 				// read a line from the SSH channel
 				line, err := rd.ReadBytes('\n')
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "error reading from SSH channel: %s", err)
+					fmt.Fprintf(os.Stderr, "error reading from SSH channel: %s\n", err)
 					return
 				}
 				// write the line to serial

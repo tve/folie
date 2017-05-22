@@ -1,32 +1,96 @@
-package main
+package folie
+
+// This file contains the SerialConn, which interfaces with a serial port.
 
 import (
 	//"bytes"
-	"flag"
+
 	"fmt"
 	"io"
-	"net"
 	"os"
 	"path"
-	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/chzyer/readline"
 	"go.bug.st/serial.v1"
 )
 
-var (
-	port = flag.String("p", "", "serial port (COM*, /dev/cu.*, or /dev/tty*)")
-	baud = flag.Int("b", 115200, "serial baud rate")
-	raw  = flag.Bool("r", false, "use raw instead of telnet protocol")
-
-	tty     serial.Port        // only used for serial connections
-	dev     io.ReadWriteCloser // used for both serial and tcp connections
-	tnState int                // tracks telnet protocol state when reading
+const (
+	byIDPrefix = "/dev/serial/by-id/" // where to find serial devices by ID on linux
 )
 
-func selectPort() string {
+// SerialConn implements microConn for a microcontroller attached to a local serial port.
+type SerialConn struct {
+	Path string // pathname of device
+	Baud int    // desired baud rate, if 0 defaults to 115200
+
+	intPath string      // path after switching to by-id pathname
+	tty     serial.Port // the actual serial port
+	mu      sync.Mutex  // make writes atomic
+}
+
+var _ MicroConn = &SerialConn{} // ensure the interface is implemented
+
+// Open connects to the serial device and initializes the baud rate as well as RTS & DTR.
+func (sc *SerialConn) Open() error {
+	if sc.intPath == "" {
+		sc.intPath = switchDev(sc.Path)
+	}
+	if sc.Baud == 0 {
+		sc.Baud = 115200
+	}
+
+	tty, err := serial.Open(sc.intPath, &serial.Mode{BaudRate: sc.Baud})
+	if err != nil {
+		return fmt.Errorf("%s: %s", sc.intPath, err)
+	}
+	tty.SetRTS(true)
+	tty.SetDTR(false)
+	sc.tty = tty
+	return nil
+}
+
+// Close closes the connection.
+func (sc *SerialConn) Close() error { return sc.tty.Close() }
+
+// Read bytes from the connection.
+func (sc *SerialConn) Read(buf []byte) (int, error) { return sc.tty.Read(buf) }
+
+// Write atomically sends bytes across the connection.
+func (sc *SerialConn) Write(buf []byte) (int, error) {
+	sc.mu.Lock()
+	defer sc.mu.Unlock()
+
+	n, err := sc.tty.Write(buf)
+	if err == io.EOF { // FIXME: what do we get when Writing to a closed connection?
+		err = io.EOF
+	}
+	return n, err
+}
+
+// Reset resets the attached microcontroller. If enterBoot is true the microcontroller enters the
+// built-in bootloader allowing flash memory to be reprogrammed.
+func (sc *SerialConn) Reset(enterBoot bool) {
+	sc.mu.Lock()
+	defer sc.mu.Unlock()
+
+	sc.tty.SetDTR(true)
+	sc.tty.SetRTS(!enterBoot)
+	time.Sleep(time.Millisecond)
+	sc.tty.SetDTR(false)
+	time.Sleep(time.Millisecond)
+}
+
+// Flash sends a binary flash image to the attached microcontroller.
+func (sc *SerialConn) Flash(data []byte) {
+}
+
+// SelectPort enumerates available ports, prompts for a choice, and returns the chosen port name.
+// It returns an empty string if nothing useful was chosen.
+func SelectPort(console *readline.Instance) string {
 	allPorts, err := serial.GetPortsList()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -50,168 +114,59 @@ func selectPort() string {
 	for i, p := range ports {
 		fmt.Fprintf(console.Stdout(), "%3d: %s\n", i+1, p)
 	}
-	console.SetPrompt("? ")
-	console.Refresh()
-	reply, _ := console.Readline()
-	console.SetPrompt("")
-	fmt.Println(reply)
-
-	sel, _ := strconv.Atoi(reply)
-
-	// quit on index errors, since we have no other useful choice
-	defer func() {
-		if e := recover(); e != nil {
-			return
-		}
-		fmt.Println("Enter '!help' for additional help, or ctrl-d to quit.")
-	}()
-
-	return ports[sel-1]
-}
-
-func boardReset(enterBoot bool) {
-	if !*raw {
-		telnetReset(enterBoot)
-	} else if tty != nil {
-		tty.SetDTR(true)
-		tty.SetRTS(!enterBoot)
-		time.Sleep(time.Millisecond)
-		tty.SetDTR(false)
-	}
-	time.Sleep(time.Millisecond)
-}
-
-func blockUntilOpen() {
-	var lastErr string
 	for {
-		var err error
-		if _, err = os.Lstat(*port); os.IsNotExist(err) &&
-			strings.Count(*port, ":") == 1 && !strings.HasSuffix(*port, ":") {
-			// if nonexistent, it's an ip addr + port, open it as network port
-			dev, err = net.Dial("tcp", *port)
-		} else {
-			tty, err = serial.Open(*port, &serial.Mode{
-				BaudRate: *baud,
-			})
-			dev = tty
-			if runtime.GOOS == "linux" {
-				switchToByPathDev("/dev/serial/by-path/")
-			}
+		console.SetPrompt("? ")
+		console.Refresh()
+		reply, err := console.Readline()
+		if err != nil {
+			return ""
 		}
-		if err == nil {
-			break
+		console.SetPrompt("")
+		fmt.Fprintln(console.Stdout(), reply)
+
+		if sel, _ := strconv.Atoi(reply); sel > 0 && sel <= len(ports) {
+			return ports[sel-1]
 		}
-		if err.Error() != lastErr {
-			fmt.Println(err)
-			lastErr = err.Error()
-		}
-		time.Sleep(500 * time.Millisecond)
-	}
-	serialRecv = make(chan []byte)
-
-	go SerialDispatch()
-
-	// use readline's Stdout to force re-display of current input
-	fmt.Fprintf(console.Stdout(), "[connected to %s]\n", path.Base(*port))
-
-	if !*raw {
-		telnetInit()
-	} else {
-		tty.SetRTS(true)
-		tty.SetDTR(false)
+		fmt.Fprintln(console.Stdout(), "Enter number of desired port or ctrl-d to quit.")
 	}
 }
 
-// switchToByPathDev allows re-opening a device even if its name changes
-func switchToByPathDev(prefix string) {
-	if dir, err := os.Open(prefix); err == nil {
+// switchDev switches a /dev/ttyXXX path to /dev/serial/by-id/YYY in order to allow reopening
+// the device when it's reset or unplugged and replugged. It returns the mapped port name or the
+// provided name if no mapping could be found.
+func switchDev(devicePath string) string {
+	if dir, err := os.Open(byIDPrefix); err == nil {
 		names, _ := dir.Readdirnames(-1)
 		// look for an entry matching the current serial device name
 		for _, name := range names {
-			alias := prefix + name
+			alias := byIDPrefix + name
 			link, e := os.Readlink(alias)
-			if e == nil && path.Base(*port) == path.Base(link) {
-				// switch to the session-indepenent name (only switches once)
-				*port = alias
-				break
+			if e == nil && path.Base(devicePath) == path.Base(link) {
+				// return the session-independent name
+				return alias
 			}
 		}
 	}
+	return devicePath
 }
 
-// SerialConnect opens and re-opens a serial port and feeds the receive channel.
-func SerialConnect() {
-	for {
-		tnState = 0 // clear telnet state before anything comes in
+// ===== stuff that needs to move elsewhere
 
-		blockUntilOpen()
-
-		for {
-			data := make([]byte, 250)
-			n, err := dev.Read(data)
-			if err != nil {
-				break
+/*
+	case line := <-commandSend:
+		if strings.HasPrefix(line, "!") {
+			if SpecialCommand(line) {
+				continue
 			}
-			if !*raw {
-				n = telnetClean(data, n)
-			}
-			if n > 0 {
-				serialRecv <- data[:n]
-			}
+			line = line[1:]
 		}
-		fmt.Print("\n[disconnected] ")
-
-		dev.Close()
-		dev = nil
-		tty = nil
-		close(serialRecv)
+		data := []byte(line + "\r")
+		if *verbose {
+			fmt.Printf("send: %q\n", data)
+		}
+		serialSend <- data
 	}
-}
-
-// SerialDispatch handles all incoming and outgoing serial data.
-func SerialDispatch() {
-	go func() {
-		for data := range serialSend {
-			// send spaces iso tabs, because mecrisp echoes tabs differently
-			//data = bytes.Replace(data, []byte{'\t'}, []byte{' '}, -1)
-			if dev == nil { // avoid write-while-closed panics
-				fmt.Printf("[CAN'T WRITE! %s]\n", *port)
-				return
-			} else if _, err := dev.Write(data); err != nil {
-				fmt.Printf("[WRITE ERROR! %s]\n", *port)
-				dev.Close()
-				return
-			}
-		}
-	}()
-
-	for {
-		select {
-
-		case data, ok := <-serialRecv:
-			if *verbose {
-				fmt.Printf("recv: %q %v\n", data, ok)
-			}
-			if !ok {
-				return
-			}
-			os.Stdout.Write(data)
-
-		case line := <-commandSend:
-			if strings.HasPrefix(line, "!") {
-				if SpecialCommand(line) {
-					continue
-				}
-				line = line[1:]
-			}
-			data := []byte(line + "\r")
-			if *verbose {
-				fmt.Printf("send: %q\n", data)
-			}
-			serialSend <- data
-		}
-	}
-}
+*/
 
 // SpecialCommand recognises and handles certain commands in a different way.
 func SpecialCommand(line string) bool {

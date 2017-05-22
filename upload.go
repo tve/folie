@@ -1,11 +1,6 @@
-package main
+package folie
 
-import (
-	"encoding/hex"
-	"fmt"
-	"strings"
-	"time"
-)
+// This file contains code to flash a microcontroller with a hex/binary image.
 
 const (
 	ACK        = 0x79
@@ -25,6 +20,10 @@ var (
 	pending  []byte // data received while waiting for line echo
 	extended bool   // flash erase uses extended mode
 )
+
+var Verbose bool
+
+/*
 
 // Uploader implements the STM32 usart boot protocol to upload new firmware.
 func Uploader(data []byte) {
@@ -71,8 +70,8 @@ func Uploader(data []byte) {
 
 func readWithTimeout(t time.Duration) []byte {
 	select {
-	case data := <-serialRecv:
-		return data
+	//	case data := <-serialRecv:
+	//		return data
 	case <-time.After(t):
 		//fmt.Println("timeout")
 		return nil
@@ -80,7 +79,7 @@ func readWithTimeout(t time.Duration) []byte {
 }
 
 func sendByte(b uint8) {
-	if *verbose {
+	if Verbose {
 		fmt.Printf(">%02X", b)
 	}
 	if !*raw && b == Iac {
@@ -144,7 +143,7 @@ func sendCmd(cmd uint8) {
 
 func connectToTarget() {
 	for {
-		boardReset(true) // reset with BOOT0 high to enter boot loader
+		//		boardReset(true) // reset with BOOT0 high to enter boot loader
 		time.Sleep(100 * time.Millisecond)
 		sendByte(0x7F)
 		r := getReply()
@@ -202,8 +201,8 @@ func massErase(pages int) {
 }
 
 func writeFlash(data []byte) {
-	origVerbose := *verbose
-	defer func() { *verbose = origVerbose }()
+	origVerbose := Verbose
+	defer func() { Verbose = origVerbose }()
 
 	fmt.Print("writing: ")
 	eraseCount := 0
@@ -229,7 +228,7 @@ func writeFlash(data []byte) {
 		}
 		sendByte(checkSum)
 		wantAck(0)
-		*verbose = false // reduce debug output after the first page write
+		Verbose = false // reduce debug output after the first page write
 	}
 }
 
@@ -261,3 +260,4 @@ func HexToBin(data []byte) []byte {
 	}
 	return bin
 }
+*/

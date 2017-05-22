@@ -1,4 +1,6 @@
-package main
+package folie
+
+// This file defines the Console, which interfaces with an interactive terminal.
 
 import (
 	"bytes"
@@ -9,46 +11,59 @@ import (
 	"github.com/chzyer/readline"
 )
 
-var (
-	console *readline.Instance
-)
-
-func ConsoleSetup() {
+// NewReadline creates a readline instance on stdin/out.
+func NewReadline() (*readline.Instance, error) {
 	if readline.IsTerminal(1) {
-		os.Stdout = InsertCRs(os.Stdout)
+		os.Stdout = insertCRs(os.Stdout)
 	}
 	if readline.IsTerminal(2) {
-		os.Stderr = InsertCRs(os.Stderr)
+		os.Stderr = insertCRs(os.Stderr)
 	}
 
-	var err error
 	config := readline.Config{
-		UniqueEditLine:    true,
-		HistorySearchFold: true,
+		UniqueEditLine:    true, // erase input after submitting
+		HistorySearchFold: true, // case insensitive history
 		AutoComplete:      FileCompleter{},
 	}
-	console, err = readline.NewEx(&config)
-	check(err)
-}
-
-// ConsoleTask listens to the console with readline for editing & history.
-func ConsoleTask() {
-	for {
-		line, err := console.Readline()
-		if err == readline.ErrInterrupt {
-			line = "!reset"
-		} else if err != nil {
-			close(done)
-			break
-		}
-		commandSend <- line
+	rdl, err := readline.NewEx(&config)
+	if err != nil {
+		return nil, err
 	}
+	return rdl, nil
 }
 
-// InsertCRs is used to insert lost CRs when readline is active
-func InsertCRs(out *os.File) *os.File {
-	readFile, writeFile, err := os.Pipe()
-	check(err)
+// RunConsole runs one goroutine to push lines read on stdin into the rx channel,
+// and another to print lines coming from the tx channel onto stdout.
+func RunConsole(rdl *readline.Instance, tx <-chan []byte, rx chan<- []byte, done chan error) {
+	// Goroutine to listen to stdin and send lines into the rx channel.
+	go func() {
+		for {
+			line, err := rdl.Readline()
+			if err == readline.ErrInterrupt {
+				line = "!reset"
+			} else if err != nil {
+				close(done)
+				return
+			}
+			// Convert to []byte and add terminating CR.
+			buf := make([]byte, len(line)+1)
+			copy(buf, line)
+			buf[len(line)] = '\r'
+			rx <- buf
+		}
+	}()
+
+	// Goroutine to print lines coming on tx.
+	go func() {
+		for line := range tx {
+			os.Stdout.Write(line)
+		}
+	}()
+}
+
+// insertCRs is used to insert lost CRs when readline is active.
+func insertCRs(out *os.File) *os.File {
+	readFile, writeFile, _ := os.Pipe()
 
 	go func() {
 		defer readFile.Close()
@@ -56,25 +71,32 @@ func InsertCRs(out *os.File) *os.File {
 		for {
 			n, err := readFile.Read(data[:])
 			if err != nil {
-				break
+				return
 			}
-			out.Write(bytes.Replace(data[:n], []byte("\n"), []byte("\r\n"), -1))
+			line := bytes.Replace(data[:n], []byte("\n"), []byte("\r\n"), -1)
+			for len(line) > 0 {
+				n, err := out.Write(line)
+				if err != nil {
+					return
+				}
+				line = line[n:]
+			}
 		}
 	}()
 
 	return writeFile
 }
 
-// Readline will pass the whole line and current offset to it
-// Completer need to pass all the candidates, and how long they shared the same characters in line
+// FileCompleter performs filename completion for readline.
+type FileCompleter struct{}
+
+// Do returns a list of candidate completions given the whole line and the current offset into it.
+// The length return value is how long they shared the same characters in line.
 // Example:
 //   [go, git, git-shell, grep]
 //   Do("g", 1) => ["o", "it", "it-shell", "rep"], 1
 //   Do("gi", 2) => ["t", "t-shell"], 2
 //   Do("git", 3) => ["", "-shell"], 3
-
-type FileCompleter struct{}
-
 func (f FileCompleter) Do(line []rune, pos int) (newLine [][]rune, length int) {
 	typedSoFar := string(line[:pos])
 	spacePos := strings.IndexByte(typedSoFar, ' ')
