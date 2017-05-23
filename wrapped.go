@@ -7,54 +7,66 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
-	"sync"
 )
 
-type CommandProcessor struct {
-	MicroTx   chan<- []byte // transmit to microcontroller
-	MicroRx   <-chan []byte // receive from microcontroller
-	ConsoleRx <-chan []byte // receive from multiple consoles
+// The functions in this file are only called in the context of interactive console input and they
+// all print directly to stdout. This is OK in this context, but may have to be changed in the
+// future if we want to support a remote interactive console. Not clear there is a need for that.
 
-	mu        sync.Mutex      // protect fields below
-	consoleTx []chan<- []byte // broadcast to multiple consoles
-}
+// specialCommand recognises and handles certain commands in a different way.
+func (sw *Switchboard) specialCommand(line string) bool {
+	cmd := strings.SplitN(line, " ", 2)
+	switch cmd[0] {
+	case "!":
+		fmt.Println("[enter '!h' for help]")
 
-func (cp *CommandProcessor) AddConsoleTx(tx chan<- []byte) {
-	cp.mu.Lock()
-	defer cp.mu.Unlock()
+	case "!c", "!cd":
+		fmt.Println(line)
+		wrappedCd(cmd)
 
-	cp.consoleTx = append(cp.consoleTx, tx)
-}
+	case "!h", "!help":
+		fmt.Println(line)
+		showHelp()
 
-func (cp *CommandProcessor) RemoveConsoleTx(tx chan<- []byte) {
-	cp.mu.Lock()
-	defer cp.mu.Unlock()
+	case "!l", "!ls":
+		fmt.Println(line)
+		wrappedLs(cmd)
 
-	for i := range cp.consoleTx {
-		if cp.consoleTx[i] == tx {
-			cp.consoleTx = append(cp.consoleTx[:i], cp.consoleTx[i+1:]...)
-		}
+	case "!r", "!reset":
+		fmt.Println(line)
+		sw.wrappedReset()
+
+	case "!s", "!send":
+		fmt.Println(line)
+		wrappedSend(cmd)
+
+	case "!u", "!upload":
+		fmt.Println(line)
+		wrappedUpload(cmd)
+
+	default:
+		return false
 	}
+	return true
 }
 
-func (cp *CommandProcessor) Start() {
-	// Goroutine to read from microcontroller and output
-	go func() {
-		for buf := range cp.MicroRx {
-			cp.mu.Lock()
-			for _, tx := range cp.consoleTx {
-				tx <- buf
-			}
-			cp.mu.Unlock()
-		}
-	}()
+const helpMsg = `
+Special commands, these can also be abbreviated as "!r", etc:
+  !reset          reset the board, same as ctrl-c
+  !send <file>    send text file to the serial port, expand "include" lines
+  !upload         show the list of built-in firmware images
+  !upload <n>     upload built-in image <n> using STM32 boot protocol
+  !upload <file>  upload specified firmware image (bin or hex format)
+  !upload <url>   fetch firmware image from given URL, then upload it
+Utility commands:
+  !cd <dir>       change directory (or list current one if not specified)
+  !ls <dir>       list contents of the specified (or current) directory
+  !help           this message
+To quit, hit ctrl-d. For command history, use up-/down-arrow.
+`
 
-	// Goroutine to read from consoles and output to uC
-	go func() {
-		for buf := range cp.ConsoleRx {
-			cp.MicroTx <- buf
-		}
-	}()
+func showHelp() {
+	fmt.Print(helpMsg[1:])
 }
 
 func wrappedCd(argv []string) {
@@ -90,14 +102,11 @@ func wrappedLs(argv []string) {
 	fmt.Println(strings.Join(names, " "))
 }
 
-func wrappedReset() {
-	/*
-		if dev == nil {
-			fmt.Println("[use CTRL-D to exit]")
-		} else {
-			boardReset(false)
-		}
-	*/
+func (sw *Switchboard) wrappedReset() {
+	if ok := sw.MicroOutput.Reset(false); !ok {
+		// Couldn't perform the reset, probably error on serial/telnet.
+		fmt.Println("[use CTRL-D to exit]")
+	}
 }
 
 func wrappedSend(argv []string) {

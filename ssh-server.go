@@ -3,8 +3,8 @@ package folie
 // This file contains the SSH server.
 
 import (
-	"bufio"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"os"
@@ -15,8 +15,9 @@ import (
 // SSHServer represents an instance of an SSH server that accepts incoming connections that
 // gain access to the serial port managed by folie.
 type SSHServer struct {
-	listener  net.Listener
-	sshConfig *ssh.ServerConfig
+	listener    net.Listener
+	sshConfig   *ssh.ServerConfig
+	addTxWriter func(io.Writer)
 }
 
 // NewSSHServer creates a new SSHServer, opens the listening socket, and validates that the
@@ -61,9 +62,12 @@ func NewSSHServer(listenAddr, serverKeyFile, authorizedKeysFile string) (*SSHSer
 	return &SSHServer{listener: listener, sshConfig: config}, nil
 }
 
-// Run is an infinite loop that accepts incoming connections and for each connection shuffles
-// lines between the connection and the serial port.
-func (ss *SSHServer) Run(rx chan<- []byte, addTxChan func(chan<- []byte)) {
+// Run is an infinite loop that accepts incoming connections. For each connection it starts a
+// goroutine that reads on the connection and pushes bytes into the rx channel (which is shared
+// across all). It also makes a callback to ss.addTxWriter to register the SSH channel with the
+// switchboard for transmission.
+func (ss *SSHServer) Run(rx chan<- []byte, addTxWriter func(io.Writer)) {
+	ss.addTxWriter = addTxWriter
 	// Run the accept loop, it ends with os.Exit...
 	for {
 		// Accept a connection.
@@ -75,9 +79,7 @@ func (ss *SSHServer) Run(rx chan<- []byte, addTxChan func(chan<- []byte)) {
 		fmt.Fprintf(os.Stderr, "\n[Accepted SSH from %s]\n", conn.RemoteAddr())
 
 		// Start goroutine to service the connection.
-		tx := make(chan []byte, 1)
-		addTxChan(tx)
-		go ss.service(conn, rx, tx)
+		go ss.service(conn, rx)
 	}
 }
 
@@ -105,7 +107,7 @@ func readAuthorizedKeys(file string) (map[string]struct{}, error) {
 }
 
 // service initalizes a connection and then services it.
-func (ss *SSHServer) service(conn net.Conn, rx chan<- []byte, tx <-chan []byte) { //, cmd chan string) {
+func (ss *SSHServer) service(conn net.Conn, rx chan<- []byte) { //, cmd chan string) {
 	// Perform SSH handshake. newChan is a channel where new SSH channel open requests come int
 	// and reqChan is where out-of-band requests come in.
 	_, newChan, reqChan, err := ssh.NewServerConn(conn, ss.sshConfig)
@@ -151,38 +153,22 @@ func (ss *SSHServer) service(conn net.Conn, rx chan<- []byte, tx <-chan []byte) 
 		// Service incoming SSH data and forward to the serial port.
 		go func() {
 			defer channel.Close()
-			rd := bufio.NewReader(channel)
 			for {
-				// read a line from the SSH channel
-				line, err := rd.ReadBytes('\n')
+				// Read data from SSH channel
+				buf := getBuffer()
+				n, err := channel.Read(buf)
+				if n > 0 {
+					rx <- buf[:n]
+					continue
+				}
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "error reading from SSH channel: %s\n", err)
 					return
 				}
-				// write the line to serial
-				if len(line) > 0 { // should always be true...
-					rx <- line
-				}
 			}
 		}()
 
-		// Service incoming serial data and forward to SSH.
-		go func() {
-			defer channel.Close()
-			for line := range tx {
-				// Write the line to SSH, need to loop over individual write calls.
-				for {
-					n, err := channel.Write(line)
-					if err != nil {
-						fmt.Fprintf(os.Stderr, "error writing to SSH channel: %s", err)
-						return
-					}
-					if n == len(line) {
-						break
-					}
-					line = line[n:]
-				}
-			}
-		}()
+		// Register with switchboard so it can TX data.
+		ss.addTxWriter(channel)
 	}
 }

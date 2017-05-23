@@ -7,8 +7,11 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/tve/folie"
+	"io"
 	"os"
+	"time"
+
+	"github.com/tve/folie"
 )
 
 /*
@@ -28,7 +31,7 @@ func main() {
 	// Deal with commandline flags
 	var (
 		verbose = flag.Bool("v", false, "verbose output for debugging")
-		listen  = flag.String("l", "0.0.0.0:2022",
+		listen  = flag.String("l", "",
 			"IP address and port to listen for SSH connections, e.g. 0.0.0.0:2022")
 		serverKey      = flag.String("key", "/etc/ssh/ssh_host_dsa_key", "SSH host key for folie to use")
 		authorizedKeys = flag.String("auth", ".authorized_keys",
@@ -47,7 +50,7 @@ func main() {
 	rdl, err := folie.NewReadline()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error initializing readline: %s\n", err)
-		os.Exit(1)
+		osExit(1)
 	}
 
 	// Select serial port or remote serial port.
@@ -57,7 +60,7 @@ func main() {
 	if *port == "" {
 		// No serial (or remote serial) port chosen, nothing to do.
 		fmt.Fprintln(os.Stderr, "No port selected")
-		os.Exit(0)
+		osExit(0)
 	}
 	//fmt.Fprintf(os.Stderr, "Selected port %s\n", *port)
 
@@ -67,37 +70,37 @@ func main() {
 		var err error
 		if sshServer, err = folie.NewSSHServer(*listen, *serverKey, *authorizedKeys); err != nil {
 			fmt.Fprintf(os.Stderr, "SSH server %s", err)
-			os.Exit(1)
+			osExit(2)
 		}
 	}
 
 	// Start the goroutines for the local interactive console.
 	done := make(chan error)
-	consoleTx := make(chan []byte, 1)
-	consoleRx := make(chan []byte, 1)
-	folie.RunConsole(rdl, consoleTx, consoleRx, done)
+	consoleInput := make(chan []byte, 1)
+	folie.RunConsole(rdl, consoleInput, done)
 
 	// Open the microcontroller serial port or telnet connection and start goroutines.
-	microTx := make(chan []byte, 1)
-	microRx := make(chan []byte, 1)
 	var micro folie.MicroConn
 	if _, err := os.Stat(*port); err == nil {
 		micro = &folie.SerialConn{Path: *port, Baud: *baud}
 	} else {
 		micro = &folie.TelnetConn{Addr: *port}
 	}
-	if err := folie.MicroConnRunner(micro, microTx, microRx); err != nil {
+	microInput := make(chan []byte, 1)
+	if err := folie.MicroConnRunner(micro, microInput); err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		osExit(3)
 	}
 
-	// Start the command processor in the middle.
-	cmd := folie.CommandProcessor{MicroTx: microTx, MicroRx: microRx, ConsoleRx: consoleRx}
-	cmd.AddConsoleTx(consoleTx)
-	cmd.Start()
+	// Start the switchboard in the middle.
+	networkInput := make(chan []byte, 1)
+	sw := folie.Switchboard{MicroInput: microInput, MicroOutput: micro,
+		ConsoleInput: consoleInput, NetworkInput: networkInput}
+	sw.AddConsoleOutput(os.Stdout)
+	go sw.Run()
 
 	if sshServer != nil {
-		go sshServer.Run(consoleRx, func(tx chan<- []byte) { cmd.AddConsoleTx(tx) })
+		go sshServer.Run(networkInput, func(w io.Writer) { sw.AddConsoleOutput(w) })
 	}
 
 	fmt.Fprintln(os.Stderr, "[Ready!]")
@@ -106,6 +109,13 @@ func main() {
 			fmt.Fprintln(os.Stderr, err)
 		}
 		rdl.Close()
-		os.Exit(1)
+		osExit(1)
 	}
+}
+
+// osExit calls os.Exit after a small sleep to let stdout/stderr output drain. This is necessary
+// because of the loop-back pipe for the InsertCR stuff... Ouch.
+func osExit(code int) {
+	time.Sleep(100 * time.Millisecond)
+	os.Exit(code)
 }

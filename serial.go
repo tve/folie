@@ -73,15 +73,19 @@ func (sc *SerialConn) Write(buf []byte) (int, error) {
 
 // Reset resets the attached microcontroller. If enterBoot is true the microcontroller enters the
 // built-in bootloader allowing flash memory to be reprogrammed.
-func (sc *SerialConn) Reset(enterBoot bool) {
+// Return true if the reset can be issued, false if there is an error.
+func (sc *SerialConn) Reset(enterBoot bool) bool {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
 
-	sc.tty.SetDTR(true)
+	if err := sc.tty.SetDTR(true); err != nil {
+		return false
+	}
 	sc.tty.SetRTS(!enterBoot)
 	time.Sleep(time.Millisecond)
 	sc.tty.SetDTR(false)
 	time.Sleep(time.Millisecond)
+	return true
 }
 
 // Flash sends a binary flash image to the attached microcontroller.
@@ -148,81 +152,4 @@ func switchDev(devicePath string) string {
 		}
 	}
 	return devicePath
-}
-
-// ===== stuff that needs to move elsewhere
-
-/*
-	case line := <-commandSend:
-		if strings.HasPrefix(line, "!") {
-			if SpecialCommand(line) {
-				continue
-			}
-			line = line[1:]
-		}
-		data := []byte(line + "\r")
-		if *verbose {
-			fmt.Printf("send: %q\n", data)
-		}
-		serialSend <- data
-	}
-*/
-
-// SpecialCommand recognises and handles certain commands in a different way.
-func SpecialCommand(line string) bool {
-	cmd := strings.SplitN(line, " ", 2)
-	if len(cmd) > 0 {
-		switch cmd[0] {
-
-		case "!":
-			fmt.Println("[enter '!h' for help]")
-
-		case "!c", "!cd":
-			fmt.Println(line)
-			wrappedCd(cmd)
-
-		case "!h", "!help":
-			fmt.Println(line)
-			showHelp()
-
-		case "!l", "!ls":
-			fmt.Println(line)
-			wrappedLs(cmd)
-
-		case "!r", "!reset":
-			fmt.Println(line)
-			wrappedReset()
-
-		case "!s", "!send":
-			fmt.Println(line)
-			wrappedSend(cmd)
-
-		case "!u", "!upload":
-			fmt.Println(line)
-			wrappedUpload(cmd)
-
-		default:
-			return false
-		}
-	}
-	return true
-}
-
-const helpMsg = `
-Special commands, these can also be abbreviated as "!r", etc:
-  !reset          reset the board, same as ctrl-c
-  !send <file>    send text file to the serial port, expand "include" lines
-  !upload         show the list of built-in firmware images
-  !upload <n>     upload built-in image <n> using STM32 boot protocol
-  !upload <file>  upload specified firmware image (bin or hex format)
-  !upload <url>   fetch firmware image from given URL, then upload it
-Utility commands:
-  !cd <dir>       change directory (or list current one if not specified)
-  !ls <dir>       list contents of the specified (or current) directory
-  !help           this message
-To quit, hit ctrl-d. For command history, use up-/down-arrow.
-`
-
-func showHelp() {
-	fmt.Print(helpMsg[1:])
 }

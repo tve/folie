@@ -91,11 +91,14 @@ func (tc *TelnetConn) Write(buf []byte) (int, error) {
 }
 
 // Reset the remote microcontroller.
-func (tc *TelnetConn) Reset(enterBoot bool) {
+// Return true if the reset can be issued, false if there is an error.
+func (tc *TelnetConn) Reset(enterBoot bool) bool {
 	tc.mu.Lock()
 	defer tc.mu.Unlock()
 
-	tc.conn.Write(telnetEscape(SetControl, DTR_ON))
+	if _, err := tc.conn.Write(telnetEscape(SetControl, DTR_ON)); err != nil {
+		return false
+	}
 	if enterBoot {
 		tc.conn.Write(telnetEscape(SetControl, RTS_OFF))
 		tc.conn.Write(telnetEscape(SetParity, PAR_EVEN))
@@ -105,6 +108,7 @@ func (tc *TelnetConn) Reset(enterBoot bool) {
 	}
 	time.Sleep(100 * time.Millisecond)
 	tc.conn.Write(telnetEscape(SetControl, DTR_OFF))
+	return true
 }
 
 // Flash reprograms a microcontroller attached to a remote serial port.

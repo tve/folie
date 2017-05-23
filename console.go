@@ -4,6 +4,7 @@ package folie
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -11,8 +12,13 @@ import (
 	"github.com/chzyer/readline"
 )
 
+var origStdErr = os.Stderr
+
 // NewReadline creates a readline instance on stdin/out.
 func NewReadline() (*readline.Instance, error) {
+	// The terminal is put into raw mode, which causes stdout and stderr not to get the usual
+	// CR-LF treatment. This means we need to add CRs ourselves.
+
 	if readline.IsTerminal(1) {
 		os.Stdout = insertCRs(os.Stdout)
 	}
@@ -32,9 +38,8 @@ func NewReadline() (*readline.Instance, error) {
 	return rdl, nil
 }
 
-// RunConsole runs one goroutine to push lines read on stdin into the rx channel,
-// and another to print lines coming from the tx channel onto stdout.
-func RunConsole(rdl *readline.Instance, tx <-chan []byte, rx chan<- []byte, done chan error) {
+// RunConsole is an infinite loop to push lines read on stdin into the rx channel.
+func RunConsole(rdl *readline.Instance, rx chan<- []byte, done chan error) {
 	// Goroutine to listen to stdin and send lines into the rx channel.
 	go func() {
 		for {
@@ -45,7 +50,7 @@ func RunConsole(rdl *readline.Instance, tx <-chan []byte, rx chan<- []byte, done
 				close(done)
 				return
 			}
-			// Convert to []byte and add terminating CR.
+			// Convert to []byte and add terminating LF.
 			buf := make([]byte, len(line)+1)
 			copy(buf, line)
 			buf[len(line)] = '\n'
@@ -53,12 +58,6 @@ func RunConsole(rdl *readline.Instance, tx <-chan []byte, rx chan<- []byte, done
 		}
 	}()
 
-	// Goroutine to print lines coming on tx.
-	go func() {
-		for line := range tx {
-			os.Stdout.Write(line)
-		}
-	}()
 }
 
 // insertCRs is used to insert lost CRs when readline is active.
@@ -71,12 +70,14 @@ func insertCRs(out *os.File) *os.File {
 		for {
 			n, err := readFile.Read(data[:])
 			if err != nil {
+				fmt.Fprintf(origStdErr, "Houston, we have a problem: %s\n", err)
 				return
 			}
 			line := bytes.Replace(data[:n], []byte("\n"), []byte("\r\n"), -1)
 			for len(line) > 0 {
 				n, err := out.Write(line)
 				if err != nil {
+					fmt.Fprintf(origStdErr, "Houston, we have a Problem: %s\n", err)
 					return
 				}
 				line = line[n:]

@@ -3,7 +3,6 @@ package folie
 // This file implements the high-level control and I/O to an attached microcontroller.
 
 import (
-	"bufio"
 	"fmt"
 	"io"
 	"os"
@@ -18,38 +17,43 @@ type MicroConn interface {
 	// Write must be atomic and it must return an io.EOF error if the conn is closed.
 	io.ReadWriteCloser
 
-	Open() error  // (re-)open the connection
-	Reset(bool)   // reset the microcontroller, the boolean says whether to enter the bootloader
-	Flash([]byte) // flash the microcontroller with the provided binary image
+	Open() error     // (re-)open the connection
+	Reset(bool) bool // reset the microcontroller, the param says whether to enter the bootloader
+	Flash([]byte)    // flash the microcontroller with the provided binary image
 }
 
-// MicroConnRunner takes a concrete struct that implements MicroConn and a pair of tx/rx channels
-// and shuffles data between the channels and MicroConn. It also takes care of reopening the
-// MicroConn underlying connection when an error occurs.
+// MicroConnRunner takes a MicroConn and an rx channel. It operates a goroutine that reads
+// from the MicroConn into the channel allowing higher levels to select on that channel. It also
+// catches errors and reopens the MicroConn transparently.
 //
-// The tx and rx channels are expected to contain LF-terminated lines, but nothing really enforces
-// that. No CR or LF stripping or adding is performed.
+// MicroConnRunner does not take part in the sending of data, instead, the MicroConn's Write method
+// should be called directly. It is expected that catching errors on Read is sufficient and "heals"
+// errors on the sending side quickly enough.
 //
 // The initial opening of the connection is done synchronously so an error can be returned
 // immediately, afterwards goroutines are spawned to continue the connection(s).
-func MicroConnRunner(mc MicroConn, tx <-chan []byte, rx chan<- []byte) error {
+func MicroConnRunner(mc MicroConn, rx chan<- []byte) error {
 	if err := mc.Open(); err != nil {
 		return err
 	}
 
-	// Loop over connections in a goroutine.
+	// Goroutine that loops over lines and reopens the connection on error.
 	go func() {
 		for {
-			// Spawn sender, it will die silently if the connection fails.
-			go microConnSender(mc, tx)
-
-			// Run the receiver, it will return an error if the connection fails.
-			var err error
-			if err = microConnReceiver(mc, rx); err != nil {
-				fmt.Fprintf(os.Stderr, "\n[disconnected: %s]\nreconnecting...", err)
+			// Read some bytes and forward to channel unless there's a problem.
+			buf := getBuffer()
+			n, err := mc.Read(buf)
+			if n > 0 {
+				// Process the bytes we got, we'll get any error again...
+				// See docs for io.Reader.
+				rx <- buf[:n]
+				continue
+			}
+			if err == nil {
+				continue // "nothing happened" according to io.Reader
 			}
 
-			// Close so the microConnSender exits.
+			fmt.Fprintf(os.Stderr, "\n[disconnected: %s]\nreconnecting...", err)
 			mc.Close()
 
 			// Open a fresh connection
@@ -70,29 +74,4 @@ func MicroConnRunner(mc MicroConn, tx <-chan []byte, rx chan<- []byte) error {
 	}()
 
 	return nil
-}
-
-// microConnSender shuffles lines from tx to the writer.
-func microConnSender(w io.Writer, tx <-chan []byte) {
-	for line := range tx {
-		if _, err := w.Write(line); err != nil {
-			if err != io.EOF {
-				fmt.Fprintln(os.Stderr, err)
-			}
-			return
-		}
-	}
-}
-
-// microConnReceiver loops over incoming bytes, splits them up into LF-terminated lines and
-// forwards them onto the rx channel.
-func microConnReceiver(r io.ReadCloser, rx chan<- []byte) error {
-	rd := bufio.NewReader(r)
-	for {
-		line, err := rd.ReadBytes('\n')
-		if err != nil {
-			return err
-		}
-		rx <- line
-	}
 }
