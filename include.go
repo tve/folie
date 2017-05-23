@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"strings"
@@ -14,11 +15,11 @@ import (
 
 var callCount int
 
-// IncludeFile sends out one file onto tx, line by line, expanding embedded includes as needed.
-func IncludeFile(tx chan<- []byte, name string, level int) bool {
+// includeFile sends out one file onto tx, line by line, expanding embedded includes as needed.
+func includeFile(tx io.Writer, rx <-chan []byte, name string, level int) bool {
 	f, err := os.Open(name)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintf(os.Stderr, "Cannot open %s: %s\n", name, err)
 		return false
 	}
 	defer f.Close()
@@ -51,13 +52,17 @@ func IncludeFile(tx chan<- []byte, name string, level int) bool {
 		if strings.HasPrefix(line, "include ") {
 			for _, fname := range strings.Fields(line)[1:] {
 				statusMsg(lastMsg, "")
-				if !IncludeFile(tx, path.Join(currDir, fname), level+1) {
+				if !includeFile(tx, rx, path.Join(currDir, fname), level+1) {
 					return false
 				}
 			}
 		} else {
-			tx <- []byte(line + "\r")
-			if !match(line) {
+			buf := make([]byte, len(line)+1)
+			copy(buf, line)
+			buf[len(line)] = '\r'
+
+			tx.Write(buf)
+			if !match(line, rx) {
 				return false
 			}
 		}
@@ -83,23 +88,22 @@ func statusMsg(prev string, desc string, args ...interface{}) string {
 	return msg
 }
 
-func match(expect string) bool {
+func match(expect string, rx <-chan []byte) bool {
 	timer := time.NewTimer(3 * time.Second)
 
 	var pending []byte
 	for {
 		select {
 
-		/*
-			case data := <-serialRecv:
-				pending = append(pending, data...)
-				if !timer.Stop() {
-					<-timer.C
-				}
-				timer.Reset(time.Second)
+		case data := <-rx:
+			pending = append(pending, data...)
+			if !timer.Stop() {
+				<-timer.C
+			}
+			timer.Reset(time.Second)
 
-			case <-commandSend:
-				return false // abort include
+		/*	case <-commandSend:
+			return false // abort include
 		*/
 
 		case <-time.After(10 * time.Millisecond):
@@ -108,14 +112,17 @@ func match(expect string) bool {
 			}
 
 			lines := bytes.Split(pending, []byte{'\n'})
+			// Print and then discard all but the last complete line and the possible
+			// start of an incomplete line.
 			n := len(lines)
 			for i := 0; i < n-2; i++ {
 				fmt.Printf("%s\n", lines[i])
 			}
 			lines = lines[n-2:]
 
-			last := string(lines[0])
+			last := string(lines[0]) // line[0] is the last complete line
 			if len(lines[1]) == 0 {
+				// There is no partial line, so mecrisp may have caught up.
 				hasExpected := strings.HasPrefix(last, expect+" ")
 				if hasExpected || strings.HasSuffix(last, " ok.") {
 					if last != expect+"  ok." {

@@ -38,7 +38,7 @@ func (sw *Switchboard) specialCommand(line string) bool {
 
 	case "!s", "!send":
 		fmt.Println(line)
-		wrappedSend(cmd)
+		sw.wrappedSend(cmd)
 
 	case "!u", "!upload":
 		fmt.Println(line)
@@ -109,12 +109,12 @@ func (sw *Switchboard) wrappedReset() {
 	}
 }
 
-func wrappedSend(argv []string) {
+func (sw *Switchboard) wrappedSend(argv []string) {
 	if len(argv) == 1 {
 		fmt.Printf("Usage: %s <filename>\n", argv[0])
 		return
 	}
-	if !IncludeFile(nil, argv[1], 0) { // FIXME: need tx channel
+	if !includeFile(sw.MicroOutput, sw.MicroInput, argv[1], 0) { // FIXME: need tx channel
 		fmt.Println("Send failed.")
 	}
 }
