@@ -24,13 +24,14 @@ func main() {
 		verbose = flag.Bool("v", false, "verbose output for debugging")
 		listen  = flag.String("l", "",
 			"IP address and port to listen for SSH connections, e.g. 0.0.0.0:2022")
-		serverKey      = flag.String("key", "/etc/ssh/ssh_host_dsa_key", "SSH host key for folie to use")
+		serverKey = flag.String("key", "/etc/ssh/ssh_host_dsa_key",
+			"SSH host key for folie to use")
 		authorizedKeys = flag.String("auth", ".authorized_keys",
 			"SSH authorized client keys, the value \"insecure\" can be used to disable auth, "+
 				"which can be useful when listening on localhost")
-		port = flag.String("p", "", "serial port (COM*, /dev/cu.*, or /dev/tty*)")
+		port = flag.String("p", "", "serial port (COM*, /dev/cu.*, /dev/tty*, or hostname:port)")
 		baud = flag.Int("b", 115200, "serial baud rate")
-		//raw = flag.Bool("r", false, "use raw instead of telnet protocol")
+		raw  = flag.Bool("r", false, "use raw instead of telnet protocol")
 	)
 
 	flag.Parse()
@@ -73,8 +74,15 @@ func main() {
 	// Open the microcontroller serial port or telnet connection and start goroutines.
 	var micro folie.MicroConn
 	if _, err := os.Stat(*port); err == nil {
-		micro = &folie.SerialConn{Path: *port, Baud: *baud}
+		if *raw {
+			// Raw serial port controlled using DTR/RTS/...
+			micro = &folie.SerialConn{Path: *port, Baud: *baud}
+		} else {
+			// Serial port with Serplu controlled via telnet escapes.
+			micro = &folie.TelnetConn{Path: *port}
+		}
 	} else {
+		// Remote serial port across the network.
 		micro = &folie.TelnetConn{Addr: *port}
 	}
 	microInput := make(chan []byte, 1)

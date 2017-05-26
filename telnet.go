@@ -10,6 +10,8 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	"go.bug.st/serial.v1"
 )
 
 const (
@@ -34,11 +36,14 @@ const (
 
 // TelnetConn implements microConn for a microcontroller attached via a telnet connection to a
 // server that understands telnet escapes for adjusting the baudrate and toggling DTS/RTS. Examples
-// are ser2net and esp-link.
+// are ser2net and esp-link. It also connects to serplus via a serial port. Only one of Addr or Path
+// must be set.
 type TelnetConn struct {
 	Addr string // telnet server address, passed to net.Dial
+	Path string // serial port to which serplus is attached.
 
 	conn    io.ReadWriteCloser // connection to remote telnet server
+	intPath string             // serial port path after switching to by-id pathname
 	tnState int                // tracks telnet protocol state when reading
 	mu      sync.Mutex         // used to make Write atomic
 }
@@ -48,9 +53,21 @@ var _ MicroConn = &TelnetConn{} // ensure the interface is implemented
 // Open connects to the telnet server and sends the initial escape sequence to configure the
 // remote serial device.
 func (tc *TelnetConn) Open() error {
-	conn, err := net.Dial("tcp", tc.Addr)
-	if err != nil {
-		return fmt.Errorf("%s: %s", tc.Addr, err)
+	var conn io.ReadWriteCloser
+	var err error
+	if tc.Addr != "" {
+		conn, err = net.Dial("tcp", tc.Addr)
+		if err != nil {
+			return fmt.Errorf("%s: %s", tc.Addr, err)
+		}
+	} else {
+		if tc.intPath == "" {
+			tc.intPath = switchDev(tc.Path)
+		}
+		conn, err = serial.Open(tc.intPath, &serial.Mode{BaudRate: 115200})
+		if err != nil {
+			return fmt.Errorf("%s: %s", tc.intPath, err)
+		}
 	}
 
 	if _, err := conn.Write([]byte{Iac, Will, ComPortOpt}); err != nil {
