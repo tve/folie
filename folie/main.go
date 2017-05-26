@@ -14,15 +14,6 @@ import (
 	"github.com/tve/folie"
 )
 
-/*
-var (
-	serialRecv  = make(chan []byte)
-	serialSend  = make(chan []byte)
-	commandSend = make(chan string)
-	done        = make(chan error)
-)
-*/
-
 var VERSION = "3.dev" // overriden in Makefile
 
 func main() {
@@ -95,7 +86,8 @@ func main() {
 	// Start the switchboard in the middle.
 	networkInput := make(chan []byte, 1)
 	sw := folie.Switchboard{MicroInput: microInput, MicroOutput: micro,
-		ConsoleInput: consoleInput, NetworkInput: networkInput}
+		ConsoleInput: consoleInput, NetworkInput: networkInput,
+		AssetNames: AssetNames(), Asset: Asset}
 	sw.AddConsoleOutput(os.Stdout)
 	go sw.Run()
 

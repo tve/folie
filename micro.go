@@ -19,7 +19,7 @@ type MicroConn interface {
 
 	Open() error     // (re-)open the connection
 	Reset(bool) bool // reset the microcontroller, the param says whether to enter the bootloader
-	Flash([]byte)    // flash the microcontroller with the provided binary image
+	//Remote() bool    // true if micro is remote (to adjust for timeouts)
 }
 
 // MicroConnRunner takes a MicroConn and an rx channel. It operates a goroutine that reads

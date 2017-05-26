@@ -4,6 +4,7 @@ package folie
 // microcontroller via a remote serial port.
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net"
@@ -78,8 +79,9 @@ func (tc *TelnetConn) Read(buf []byte) (int, error) {
 	return n, err
 }
 
-// Write atomically sends bytes across the connection.
-func (tc *TelnetConn) Write(buf []byte) (int, error) {
+// write atomically sends bytes across the connection.
+// It does NOT escape the Telnet escape character.
+func (tc *TelnetConn) write(buf []byte) (int, error) {
 	tc.mu.Lock()
 	defer tc.mu.Unlock()
 
@@ -88,6 +90,13 @@ func (tc *TelnetConn) Write(buf []byte) (int, error) {
 		err = io.EOF
 	}
 	return n, err
+}
+
+// Write atomically sends bytes across the connection.
+// It escapes the Telnet escape character.
+func (tc *TelnetConn) Write(buf []byte) (int, error) {
+	buf = bytes.Replace(buf, []byte{Iac}, []byte{Iac, Iac}, -1)
+	return tc.write(buf)
 }
 
 // Reset the remote microcontroller.
@@ -109,10 +118,6 @@ func (tc *TelnetConn) Reset(enterBoot bool) bool {
 	time.Sleep(100 * time.Millisecond)
 	tc.conn.Write(telnetEscape(SetControl, DTR_OFF))
 	return true
-}
-
-// Flash reprograms a microcontroller attached to a remote serial port.
-func (tc *TelnetConn) Flash(data []byte) {
 }
 
 //

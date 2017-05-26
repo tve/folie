@@ -5,7 +5,11 @@ package folie
 import (
 	"fmt"
 	"io/ioutil"
+	"net/http"
+	"net/url"
 	"os"
+	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -42,7 +46,7 @@ func (sw *Switchboard) specialCommand(line string) bool {
 
 	case "!u", "!upload":
 		fmt.Println(line)
-		wrappedUpload(cmd)
+		sw.wrappedUpload(cmd)
 
 	default:
 		return false
@@ -133,58 +137,54 @@ func crc16(data []byte) uint16 {
 	return crc
 }
 
-func wrappedUpload(argv []string) {
-	/*
-		names := AssetNames()
-		sort.Strings(names)
+func (sw *Switchboard) wrappedUpload(argv []string) {
+	names := sw.AssetNames
+	sort.Strings(names)
 
-		if len(argv) == 1 {
-			fmt.Println("These firmware images are built-in:")
-			for i, name := range names {
-				data, _ := Asset(name)
-				fmt.Printf("%3d: %-16s %5db  crc:%04X\n",
-					i+1, name, len(data), crc16(data))
-			}
-			fmt.Println("Use '!u <n>' to upload a specific one.")
+	if len(argv) == 1 {
+		fmt.Println("These firmware images are built-in:")
+		for i, name := range names {
+			data, _ := sw.Asset(name)
+			fmt.Printf("%3d: %-16s %5db  crc:%04X\n",
+				i+1, name, len(data), crc16(data))
+		}
+		fmt.Println("Use '!u <n>' to upload a specific one.")
+		return
+	}
+
+	// try built-in images first, indicated by entering a valid number
+	var data []byte
+	if n, err := strconv.Atoi(argv[1]); err == nil && 0 < n && n <= len(names) {
+		data, _ = sw.Asset(names[n-1])
+	} else if u, err := url.Parse(argv[1]); err == nil && u.Scheme != "" {
+		fmt.Print("Fetching... ")
+		res, err := http.Get(argv[1])
+		if err == nil {
+			data, err = ioutil.ReadAll(res.Body)
+			res.Body.Close()
+		}
+		if err != nil {
+			fmt.Println(err)
 			return
 		}
-
-		// try built-in images first, indicated by entering a valid number
-		var data []byte
-		if n, err := strconv.Atoi(argv[1]); err == nil && 0 < n && n <= len(names) {
-			data, _ = Asset(names[n-1])
-		} else if u, err := url.Parse(argv[1]); err == nil && u.Scheme != "" {
-			fmt.Print("Fetching... ")
-			res, err := http.Get(argv[1])
-			if err == nil {
-				data, err = ioutil.ReadAll(res.Body)
-				res.Body.Close()
-			}
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-			fmt.Printf("got it, crc:%04X\n", crc16(data))
-		} else { // else try opening the arg as file
-			f, err := os.Open(argv[1])
-			if err == nil {
-				data, err = ioutil.ReadAll(f)
-				f.Close()
-			}
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
+		if res.StatusCode < 200 || res.StatusCode >= 300 {
+			fmt.Printf("%s: %s\n", res.Status, string(data))
 		}
-
-		if tty != nil && *raw {
-			// temporarily switch to even parity during upload
-			tty.SetMode(&serial.Mode{BaudRate: *baud, Parity: serial.EvenParity})
-			defer tty.SetMode(&serial.Mode{BaudRate: *baud})
+		fmt.Printf("got it, crc:%04X\n", crc16(data))
+	} else { // else try opening the arg as file
+		f, err := os.Open(argv[1])
+		if err == nil {
+			data, err = ioutil.ReadAll(f)
+			f.Close()
 		}
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+	}
 
-		defer boardReset(false) // reset with BOOT0 low to restart normally
+	defer sw.MicroOutput.Reset(false) // reset with BOOT0 low to restart normally
 
-		Uploader(data)
-	*/
+	u := &Uploader{Tx: sw.MicroOutput, Rx: sw.MicroInput}
+	u.Upload(data)
 }

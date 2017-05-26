@@ -82,14 +82,15 @@ func (sc *SerialConn) Reset(enterBoot bool) bool {
 		return false
 	}
 	sc.tty.SetRTS(!enterBoot)
+	if enterBoot {
+		sc.tty.SetMode(&serial.Mode{BaudRate: sc.Baud, Parity: serial.EvenParity})
+	} else {
+		sc.tty.SetMode(&serial.Mode{BaudRate: sc.Baud})
+	}
 	time.Sleep(time.Millisecond)
 	sc.tty.SetDTR(false)
 	time.Sleep(time.Millisecond)
 	return true
-}
-
-// Flash sends a binary flash image to the attached microcontroller.
-func (sc *SerialConn) Flash(data []byte) {
 }
 
 // SelectPort enumerates available ports, prompts for a choice, and returns the chosen port name.

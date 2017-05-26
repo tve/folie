@@ -21,8 +21,12 @@ type Switchboard struct {
 	ConsoleInput <-chan []byte // receive from interactive console (has ! commands)
 	NetworkInput <-chan []byte // receive from remote consoles (no ! commands)
 
+	AssetNames []string                     // list of built-in firmwares
+	Asset      func(string) ([]byte, error) // callback the get asset
+
 	mu            sync.Mutex  // protect fields below
 	consoleOutput []io.Writer // broadcast to multiple consoles
+
 }
 
 func (sw *Switchboard) AddConsoleOutput(wr io.Writer) {
