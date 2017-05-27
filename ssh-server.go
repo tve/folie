@@ -153,9 +153,9 @@ func (ss *SSHServer) service(conn net.Conn, rx chan<- NetInput) { //, cmd chan s
 					case "\x00\x00\x00\x05flash":
 						fmt.Fprintf(os.Stderr, "exec flash\n")
 						mode = FlashIn
-					case "\x00\x00\x00\x03cmd":
-						fmt.Fprintf(os.Stderr, "exec cmd\n")
-						mode = CommandIn
+					case "\x00\x00\x00\x05forth":
+						fmt.Fprintf(os.Stderr, "exec forth\n")
+						mode = ForthIn
 					case "\x00\x00\x00\x06packet":
 						fmt.Fprintf(os.Stderr, "exec packet\n")
 						mode = PacketIn
@@ -205,7 +205,7 @@ func (ss *SSHServer) service(conn net.Conn, rx chan<- NetInput) { //, cmd chan s
 				}
 			case ResetIn:
 				rx <- NetInput{What: mode}
-			case CommandIn, PacketIn, FlashIn:
+			case ForthIn, PacketIn, FlashIn:
 				buf, _ := ioutil.ReadAll(channel)
 				rx <- NetInput{What: mode, Buf: buf}
 			}
