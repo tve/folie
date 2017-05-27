@@ -92,7 +92,7 @@ func main() {
 	}
 
 	// Start the switchboard in the middle.
-	networkInput := make(chan []byte, 1)
+	networkInput := make(chan folie.NetInput, 1)
 	sw := folie.Switchboard{MicroInput: microInput, MicroOutput: micro,
 		ConsoleInput: consoleInput, NetworkInput: networkInput,
 		AssetNames: AssetNames(), Asset: Asset}
