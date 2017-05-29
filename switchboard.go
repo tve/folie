@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"sync"
+	"time"
 )
 
 // bufferPool holds buffers to use in Read() calls.
@@ -91,6 +92,13 @@ func (sw *Switchboard) consoleWrite(buf []byte) {
 	}
 }
 
+type consoleWriter struct{ SW *Switchboard }
+
+func (cw *consoleWriter) Write(buf []byte) (int, error) {
+	cw.SW.consoleWrite(buf)
+	return len(buf), nil
+}
+
 // Run operates teh switchboard and specifically processes input and writes it as approprite to
 // outputs. Run is an infinite for loop with a select, so once input arrives that captures the
 // thread of control until the corresponding output is done. In some cases, such as when calling
@@ -141,8 +149,10 @@ func (sw *Switchboard) Run() {
 			case ResetIn: // just cause a reset
 				sw.MicroOutput.Reset(false)
 			case FlashIn: // reflash/upload microcontroller
-				up := Uploader{Tx: sw.MicroOutput, Rx: sw.MicroInput}
+				up := Uploader{Tx: sw.MicroOutput, Rx: sw.MicroInput,
+					Stdout: &consoleWriter{sw}}
 				up.Upload(inp.Buf)
+				time.Sleep(time.Second)
 				sw.MicroOutput.Reset(false)
 			case PacketIn:
 				line := encodePacket(inp.Buf)

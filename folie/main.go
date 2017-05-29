@@ -32,6 +32,7 @@ func main() {
 		port = flag.String("p", "", "serial port (COM*, /dev/cu.*, /dev/tty*, or hostname:port)")
 		baud = flag.Int("b", 115200, "serial baud rate")
 		raw  = flag.Bool("r", false, "use raw instead of telnet protocol")
+		ssh  = flag.String("ssh", "", "ssh address:port to connect to")
 	)
 
 	flag.Parse()
@@ -45,14 +46,32 @@ func main() {
 		osExit(1)
 	}
 
-	// Select serial port or remote serial port.
-	if *port == "" {
-		*port = folie.SelectPort(rdl)
-	}
-	if *port == "" {
-		// No serial (or remote serial) port chosen, nothing to do.
-		fmt.Fprintln(os.Stderr, "No port selected")
-		osExit(0)
+	// Select serial port, remote serial port, or ssh server.
+	var sshClient *folie.SSHClient
+	if *ssh != "" {
+		if *port != "" {
+			fmt.Fprintln(os.Stderr, "-p and -ssh cannot be combined\n")
+			osExit(1)
+		}
+		if *listen != "" {
+			fmt.Fprintln(os.Stderr, "-listen and -ssh cannot be combined\n")
+			osExit(1)
+		}
+		sshClient, err = folie.NewSSHClient(*ssh)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			osExit(1)
+		}
+
+	} else {
+		if *port == "" {
+			*port = folie.SelectPort(rdl)
+		}
+		if *port == "" {
+			// No serial (or remote serial) port chosen, nothing to do.
+			fmt.Fprintln(os.Stderr, "No port selected")
+			osExit(0)
+		}
 	}
 	//fmt.Fprintf(os.Stderr, "Selected port %s\n", *port)
 
@@ -73,7 +92,9 @@ func main() {
 
 	// Open the microcontroller serial port or telnet connection and start goroutines.
 	var micro folie.MicroConn
-	if _, err := os.Stat(*port); err == nil {
+	if sshClient != nil {
+		micro = sshClient
+	} else if _, err := os.Stat(*port); err == nil {
 		if *raw {
 			// Raw serial port controlled using DTR/RTS/...
 			micro = &folie.SerialConn{Path: *port, Baud: *baud}

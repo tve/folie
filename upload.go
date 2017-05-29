@@ -3,6 +3,7 @@ package folie
 import (
 	"encoding/hex"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 )
@@ -25,8 +26,10 @@ const (
 var Verbose bool
 
 type Uploader struct {
-	Tx       MicroConn
-	Rx       <-chan []byte
+	Tx     MicroConn
+	Rx     <-chan []byte
+	Stdout io.Writer
+
 	checkSum byte   // upload protocol checksum
 	pending  []byte // data received while waiting for line echo
 	extended bool   // flash erase uses extended mode
@@ -38,26 +41,26 @@ func (u *Uploader) Upload(data []byte) {
 	if len(data) > 11 && data[0] == ':' {
 		_, err := hex.DecodeString(string(data[1:11]))
 		if err == nil {
-			data = HexToBin(data)
+			data = u.hexToBin(data)
 		}
 	}
-	fmt.Printf("  %db ", len(data))
-	defer fmt.Println()
+	fmt.Fprintf(u.Stdout, "  %db ", len(data))
+	defer fmt.Fprintln(u.Stdout)
 
 	u.connectToTarget()
 
-	fmt.Printf("V%02X ", u.getBootVersion())
-	fmt.Printf("#%04X ", u.getChipType())
+	fmt.Fprintf(u.Stdout, "V%02X ", u.getBootVersion())
+	fmt.Fprintf(u.Stdout, "#%04X ", u.getChipType())
 
 	u.sendCmd(RDUNP_CMD)
 	u.wantAck(20)
-	fmt.Print("R ")
+	fmt.Fprint(u.Stdout, "R ")
 
 	u.connectToTarget()
 
 	u.sendCmd(WRUNP_CMD)
 	u.wantAck(0)
-	fmt.Print("W ")
+	fmt.Fprint(u.Stdout, "W ")
 
 	u.connectToTarget()
 
@@ -65,14 +68,14 @@ func (u *Uploader) Upload(data []byte) {
 		// assumes L0xx (0x417), which has 128-byte pages
 		pages := (len(data) + 127) / 128
 		u.massErase(pages)
-		fmt.Printf("E%d* ", pages)
+		fmt.Fprintf(u.Stdout, "E%d* ", pages)
 	} else {
 		u.massErase(0)
-		fmt.Print("E ")
+		fmt.Fprint(u.Stdout, "E ")
 	}
 
 	u.writeFlash(data)
-	fmt.Print("done.")
+	fmt.Fprint(u.Stdout, "done.")
 }
 
 func (u *Uploader) readWithTimeout(t time.Duration) []byte {
@@ -80,14 +83,14 @@ func (u *Uploader) readWithTimeout(t time.Duration) []byte {
 	case data := <-u.Rx:
 		return data
 	case <-time.After(t):
-		//fmt.Println("timeout")
+		//fmt.Fprintln(u.Stdout, "timeout")
 		return nil
 	}
 }
 
 func (u *Uploader) sendByte(b uint8) {
 	if Verbose {
-		fmt.Printf(">%02X", b)
+		fmt.Fprintf(u.Stdout, ">%02X", b)
 	}
 	u.Tx.Write([]byte{b})
 	u.checkSum ^= b
@@ -117,7 +120,7 @@ func (u *Uploader) getReply() uint8 {
 	if len(u.pending) > 0 {
 		b = u.pending[0]
 		if Verbose {
-			fmt.Printf("<%02X#%d", b, len(u.pending))
+			fmt.Fprintf(u.Stdout, "<%02X#%d", b, len(u.pending))
 		}
 		u.pending = u.pending[1:]
 	}
@@ -131,7 +134,7 @@ func (u *Uploader) wantAck(retries int) {
 		retries -= 1
 	}
 	if r != ACK {
-		fmt.Printf("\nFailed: %02X\n", r)
+		fmt.Fprintf(u.Stdout, "\nFailed: %02X\n", r)
 	}
 	u.checkSum = 0
 }
@@ -154,11 +157,11 @@ func (u *Uploader) connectToTarget() {
 		r := u.getReply()
 		if r == ACK || r == NAK {
 			if r == ACK {
-				fmt.Print("+")
+				fmt.Fprint(u.Stdout, "+")
 			}
 			break
 		}
-		fmt.Print(".") // connecting...
+		fmt.Fprint(u.Stdout, ".") // connecting...
 	}
 }
 
@@ -209,14 +212,14 @@ func (u *Uploader) writeFlash(data []byte) {
 	origVerbose := Verbose
 	defer func() { Verbose = origVerbose }()
 
-	fmt.Print("writing: ")
+	fmt.Fprint(u.Stdout, "writing: ")
 	eraseCount := 0
 	for offset := 0; offset < len(data); offset += 256 {
 		for i := 0; i < eraseCount; i++ {
-			fmt.Print("\b")
+			fmt.Fprint(u.Stdout, "\b")
 		}
 		msg := fmt.Sprintf("%d/%d ", offset/256+1, (len(data)+255)/256)
-		fmt.Print(msg)
+		fmt.Fprint(u.Stdout, msg)
 		eraseCount = len(msg)
 
 		u.sendCmd(WRITE_CMD)
@@ -237,8 +240,8 @@ func (u *Uploader) writeFlash(data []byte) {
 	}
 }
 
-// HexToBin converts an Intel-hex format file to binary.
-func HexToBin(data []byte) []byte {
+// hexToBin converts an Intel-hex format file to binary.
+func (u *Uploader) hexToBin(data []byte) []byte {
 	var bin []byte
 	for _, line := range strings.Split(string(data), "\n") {
 		if strings.HasSuffix(line, "\r") {
@@ -248,12 +251,12 @@ func HexToBin(data []byte) []byte {
 			continue
 		}
 		if line[0] != ':' || len(line) < 11 {
-			fmt.Println("Not ihex format:", line)
+			fmt.Fprintln(u.Stdout, "Not ihex format:", line)
 			return data
 		}
 		bytes, err := hex.DecodeString(line[1:])
 		if err != nil {
-			fmt.Println("Not ihex format:", line)
+			fmt.Fprintln(u.Stdout, "Not ihex format:", line)
 			return data
 		}
 		if bytes[3] != 0x00 {

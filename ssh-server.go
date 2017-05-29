@@ -145,25 +145,26 @@ func (ss *SSHServer) service(conn net.Conn, rx chan<- NetInput) { //, cmd chan s
 			for req := range requests {
 				switch req.Type {
 				case "shell": // used by std SSH clients to get started without command name
+					fmt.Fprintf(os.Stderr, "[ssh: shell]\n")
 					req.Reply(true, nil)
 					mode = RawIn
 					close(ready)
 				case "exec": // used by std SSH clients to get started with command name
 					switch string(req.Payload) {
 					case "\x00\x00\x00\x05flash":
-						fmt.Fprintf(os.Stderr, "exec flash\n")
+						fmt.Fprintf(os.Stderr, "[ssh: flash]\n")
 						mode = FlashIn
 					case "\x00\x00\x00\x05forth":
-						fmt.Fprintf(os.Stderr, "exec forth\n")
+						fmt.Fprintf(os.Stderr, "[ssh: forth]\n")
 						mode = ForthIn
 					case "\x00\x00\x00\x06packet":
-						fmt.Fprintf(os.Stderr, "exec packet\n")
+						fmt.Fprintf(os.Stderr, "[ssh: packet]\n")
 						mode = PacketIn
 					case "\x00\x00\x00\x05reset":
-						fmt.Fprintf(os.Stderr, "exec reset\n")
+						fmt.Fprintf(os.Stderr, "[ssh: reset]\n")
 						mode = ResetIn
 					default:
-						fmt.Fprintf(os.Stderr, "invalid exec: %q\n",
+						fmt.Fprintf(os.Stderr, "[ssh: invalid exec: %q]\n",
 							string(req.Payload))
 						req.Reply(false, nil)
 						channel.Close()

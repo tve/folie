@@ -183,8 +183,16 @@ func (sw *Switchboard) wrappedUpload(argv []string) {
 		}
 	}
 
-	defer sw.MicroOutput.Reset(false) // reset with BOOT0 low to restart normally
+	if fl, ok := sw.MicroOutput.(MicroFlasher); ok {
+		// The MicroOutput implements a special flashing method. Call it!
+		// This is primarily the case for a remote SSH connection: it sends the bytes
+		// to the remote end to play the flashing game there.
+		fl.Flash(data)
+	} else {
+		// We get to perform the flashing algorithm here...
+		defer sw.MicroOutput.Reset(false) // reset with BOOT0 low to restart normally
 
-	u := &Uploader{Tx: sw.MicroOutput, Rx: sw.MicroInput}
-	u.Upload(data)
+		u := &Uploader{Tx: sw.MicroOutput, Rx: sw.MicroInput, Stdout: &consoleWriter{sw}}
+		u.Upload(data)
+	}
 }

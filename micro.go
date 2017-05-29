@@ -22,6 +22,10 @@ type MicroConn interface {
 	//Remote() bool    // true if micro is remote (to adjust for timeouts)
 }
 
+type MicroFlasher interface {
+	Flash(pgm []byte)
+}
+
 // MicroConnRunner takes a MicroConn and an rx channel. It operates a goroutine that reads
 // from the MicroConn into the channel allowing higher levels to select on that channel. It also
 // catches errors and reopens the MicroConn transparently.
